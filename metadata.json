@@ -1,0 +1,8 @@
+{
+  "name": "Copy of Etherscape v2.7.3",
+  "description": "An application that generates an evolving sequence of abstract, dream-like images using AI, creating a continuously shifting visual experience.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "prompt": ""
+}
