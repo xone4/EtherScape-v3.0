@@ -58,19 +58,19 @@ export const developmentPlan = {
           title: 'UI/UX Enhancements',
           description:
             'Improve the user interface and experience with more intuitive controls and visual feedback.',
-          status: 'future',
+          status: 'completed',
           subTasks: [
             {
               title: 'Drag-and-Drop Image Upload',
               description:
                 'Allow users to upload images by dragging and dropping them onto the application.',
-              status: 'future',
+              status: 'completed',
             },
             {
               title: 'Progress Indicators',
               description:
                 'Provide more detailed progress indicators for image generation and editing tasks.',
-              status: 'future',
+              status: 'completed',
             },
           ],
         },

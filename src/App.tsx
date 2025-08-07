@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useDropzone } from 'react-dropzone';
 import { Toaster } from 'sonner';
 import { OnboardingTour } from './components/OnboardingTour';
 import Controls from './components/Controls';
@@ -55,8 +56,26 @@ const App: React.FC = () => {
     }
   };
 
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    acceptedFiles.forEach((file) => {
+      const reader = new FileReader();
+      reader.onabort = () => console.log('file reading was aborted');
+      reader.onerror = () => console.log('file reading has failed');
+      reader.onload = () => {
+        const binaryStr = reader.result as string;
+        setImages((prev) => [
+          ...prev,
+          { src: binaryStr, alt: file.name, provider: 'drive' },
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+  }, []);
+  const { getRootProps, getInputProps } = useDropzone({ onDrop });
+
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div {...getRootProps()} className="flex h-screen bg-gray-100">
+      <input {...getInputProps()} />
       <OnboardingTour />
       <div className="flex-1 flex flex-col">
         <header className="bg-white shadow-md p-4">
@@ -71,7 +90,7 @@ const App: React.FC = () => {
             />
           </div>
           <div className="w-1/2">
-            <ImageDisplay image={selectedImage} />
+            <ImageDisplay image={selectedImage} isGenerating={isGenerating} />
           </div>
           <div className="w-1/4">
             <ImageHistory
