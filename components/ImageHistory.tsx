@@ -25,6 +25,8 @@ const getProviderIcon = (providerId?: ImageProviderId) => {
 };
 
 
+import Skeleton from './Skeleton';
+
 interface ImageHistoryProps {
   history: ImageHistoryItem[];
   onSelectItemAction: (action: HistoryActionType, item: ImageHistoryItem) => void;
@@ -35,6 +37,7 @@ interface ImageHistoryProps {
   onToggleItemForCompare: (itemId: string) => void;
   onStartComparison: () => void;
   onClearCompareSelection: () => void;
+  isGenerating: boolean;
   isGeneratingVideo?: boolean; 
   isGeneratingAudio?: boolean;
   onCloseDrawer: () => void;
@@ -113,6 +116,7 @@ const ImageHistory: React.FC<ImageHistoryProps> = ({
     onToggleItemForCompare,
     onStartComparison,
     onClearCompareSelection,
+    isGenerating,
     isGeneratingVideo,
     isGeneratingAudio,
     onCloseDrawer
@@ -236,6 +240,12 @@ const ImageHistory: React.FC<ImageHistoryProps> = ({
         </div>
       ) : (
         <div className="flex overflow-x-auto space-x-3 p-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800 flex-grow">
+            {isGenerating && activeTab === 'all' && (
+                <>
+                    <Skeleton className="w-48 h-48 flex-none" />
+                    <Skeleton className="w-48 h-48 flex-none" />
+                </>
+            )}
             {filteredHistory.map((item) => {
             const itemMediaType = item.mediaType || 'image';
             const isSelectedForCompare = isCompareModeActive && selectedItemIdsForCompare.includes(item.id);
