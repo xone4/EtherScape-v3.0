@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback, Suspense, lazy } from 'react';
 import { useAppContext, AppProvider } from './AppContext'; 
 import { remixConcept, enhancePrompt, generateTextFromImageAndPrompt } from './services/geminiService'; 
@@ -103,14 +102,8 @@ const AppContent: React.FC = () => {
   const [isEditingLoading, setIsEditingLoading] = useState<boolean>(false); 
   const [editingError, setEditingError] = useState<EditingError | null>(null);
 
-  const [suggestedConcepts, setSuggestedConcepts] = useState<string[] | null>(null);
-  const [isRemixingConcept, setIsRemixingConcept] = useState<boolean>(false);
-  const [isEnhancingPrompt, setIsEnhancingPrompt] = useState<boolean>(false);
-
   const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState<boolean>(false);
   const [isDiscoveringModels, setIsDiscoveringModels] = useState<boolean>(false); 
-
-  const [savedPresets, setSavedPresets] = useState<PresetItem[]>([]);
 
   const [mainImageZoomLevel, setMainImageZoomLevel] = useState<number>(1);
   const [mainImageIsFitToScreen, setMainImageIsFitToScreen] = useState<boolean>(true); 
@@ -1458,11 +1451,7 @@ const AppContent: React.FC = () => {
                 onStart={handleStart} onStop={handleStop} onGenerateSingle={handleGenerateSingle}
                 onSaveConcept={handleSaveConcept} 
                 onRandomize={handleRandomizeSettings} predefinedConcepts={PREDEFINED_CONCEPTS} userSavedConcepts={userSavedConcepts}
-                onRemixConcept={handleRemixConcept} suggestedConcepts={suggestedConcepts} onSelectSuggestedConcept={handleSelectSuggestedConcept}
-                isRemixingConcept={isRemixingConcept} 
                 onOpenAdvancedSettings={handleOpenAdvancedSettings} 
-                onEnhancePrompt={handleEnhancePrompt} isEnhancingPrompt={isEnhancingPrompt} 
-                savedPresets={savedPresets} onSavePreset={handleSavePreset} onLoadPreset={handleLoadPreset} onDeletePreset={handleDeletePreset}
                 onLiveQueryStart={handleLiveQueryStart} isProcessingLiveQuery={isProcessingLiveQuery}
               />
           </div>
