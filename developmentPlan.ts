@@ -56,11 +56,10 @@ export const developmentPlanData: DevPlanData = {
     "State Management Refactor: Implement a simulated centralized state management (using React Context) to mirror Jotai's benefits, reducing prop drilling and centralizing key application states.",
     "Activate Fal.ai Services (IP-Adapter, ControlNet, LLaVA, SVD): Update `services/falService.ts` to use actual `fetch` calls, `FormData`, and `Authorization` headers.",
     "Activate AudioGen Service: Update `services/audioService.ts` (for `generateSoundscapeWithFal`) to use actual `fetch` calls and `Authorization` headers.",
-    "Activate Other Chat Providers (DeepSeek): Create `services/deepseekService.ts` and integrate it into `useChat.ts` for selectable chat functionality with DeepSeek."
-  ],
-  "inProgress": [
+    "Activate Other Chat Providers (DeepSeek): Create `services/deepseekService.ts` and integrate it into `useChat.ts` for selectable chat functionality with DeepSeek.",
     "In-app Image Editing: Add In-painting tool using Clipdrop API."
   ],
+  "inProgress": [],
   "future": [
     // --- Phase 2: Improve User Experience and Add New Features (as per user plan) ---
     "In-app Image Editing: Add Out-painting tools using provider APIs (e.g., Stability AI, Clipdrop).",
