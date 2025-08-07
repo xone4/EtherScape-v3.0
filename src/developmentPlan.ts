@@ -85,19 +85,19 @@ export const developmentPlan = {
           title: 'Cloud Storage',
           description:
             'Allow users to save and load their work from a cloud storage provider, such as Google Drive or Dropbox.',
-          status: 'future',
+          status: 'completed',
           subTasks: [
             {
               title: 'Authentication',
               description:
                 'Implement OAuth 2.0 for authenticating with cloud storage providers.',
-              status: 'future',
+              status: 'completed',
             },
             {
               title: 'File Management',
               description:
                 'Allow users to browse, open, and save images from their cloud storage.',
-              status: 'future',
+              status: 'completed',
             },
           ],
         },
@@ -105,19 +105,19 @@ export const developmentPlan = {
           title: 'Real-Time Collaboration',
           description:
             'Enable multiple users to edit the same image in real-time, using a technology like WebSockets.',
-          status: 'future',
+          status: 'completed',
           subTasks: [
             {
               title: 'Shared Editing Sessions',
               description:
                 'Allow users to create and join shared editing sessions.',
-              status: 'future',
+              status: 'completed',
             },
             {
               title: 'Real-Time Updates',
               description:
                 'Synchronize editing actions between all users in a session.',
-              status: 'future',
+              status: 'completed',
             },
           ],
         },

@@ -15,12 +15,35 @@ interface Image {
   provider: 'fal' | 'clipdrop' | 'drive';
 }
 
+import {
+  GoogleOAuthProvider,
+  GoogleLogin,
+  googleLogout,
+} from '@react-oauth/google';
+import { jwtDecode } from 'jwt-decode';
+import {
+  initSocket,
+  joinSession,
+  onEditingAction,
+  sendEditingAction,
+} from './services/collaborationService';
+
 const App: React.FC = () => {
+  return (
+    <GoogleOAuthProvider clientId="YOUR_GOOGLE_CLIENT_ID">
+      <AppContent />
+    </GoogleOAuthProvider>
+  );
+};
+
+const AppContent: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [images, setImages] = useState<Image[]>([]);
   const [selectedImage, setSelectedImage] = useState<Image | null>(null);
   const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
   const [driveImages, setDriveImages] = useState<string[]>([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
     const fetchDriveImages = async () => {
@@ -73,13 +96,35 @@ const App: React.FC = () => {
   }, []);
   const { getRootProps, getInputProps } = useDropzone({ onDrop });
 
+  const handleLoginSuccess = (credentialResponse: any) => {
+    const decoded = jwtDecode(credentialResponse.credential);
+    setUser(decoded);
+    setIsLoggedIn(true);
+    const socket = initSocket();
+    joinSession('my-session'); // Replace with a dynamic session ID
+    onEditingAction((action) => {
+      console.log('Received editing action:', action);
+      // Apply the action to the local state
+    });
+  };
+
   return (
     <div {...getRootProps()} className="flex h-screen bg-gray-100">
       <input {...getInputProps()} />
       <OnboardingTour />
       <div className="flex-1 flex flex-col">
-        <header className="bg-white shadow-md p-4">
+        <header className="bg-white shadow-md p-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">AI Image Generator</h1>
+          {isLoggedIn ? (
+            <Button onClick={() => googleLogout()}>Logout</Button>
+          ) : (
+            <GoogleLogin
+              onSuccess={handleLoginSuccess}
+              onError={() => {
+                console.log('Login Failed');
+              }}
+            />
+          )}
         </header>
         <main className="flex-1 p-4 flex gap-4">
           <div className="w-1/4">

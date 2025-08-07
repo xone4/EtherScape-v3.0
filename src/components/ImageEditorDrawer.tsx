@@ -8,6 +8,7 @@ import {
   outpaintWithClipdrop,
   replaceBackgroundWithClipdrop,
 } from '../services/imageEditingService';
+import { sendEditingAction } from '../services/collaborationService';
 
 interface ImageEditorDrawerProps {
   image: { src: string; alt: string } | null;
@@ -92,6 +93,17 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
       onImageUpdate(newImageSrc);
       onClose();
     }
+  };
+
+  const handleSendAction = () => {
+    sendEditingAction('my-session', {
+      type: 'BRUSH_STROKE',
+      payload: {
+        x: 10,
+        y: 20,
+        color: '#ff0000',
+      },
+    });
   };
 
   const handleOutpaint = async () => {
@@ -189,6 +201,7 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
             <Button onClick={handleInpaint}>Inpaint</Button>
             <Button onClick={handleOutpaint}>Outpaint</Button>
             <Button onClick={handleRemoveObject}>Remove Object</Button>
+            <Button onClick={handleSendAction}>Send Action</Button>
           </div>
           <div className="mt-4 flex gap-2">
             <Input
