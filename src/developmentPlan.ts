@@ -38,19 +38,19 @@ export const developmentPlan = {
           title: 'Advanced Image Editing Tools',
           description:
             'Implement more sophisticated image editing capabilities, such as object removal and background replacement.',
-          status: 'future',
+          status: 'completed',
           subTasks: [
             {
               title: 'Object Removal',
               description:
                 'Allow users to remove objects from an image by masking them and using an in-painting API.',
-              status: 'future',
+              status: 'completed',
             },
             {
               title: 'Background Replacement',
               description:
                 'Enable users to replace the background of an image with a new one generated from a text prompt.',
-              status: 'future',
+              status: 'completed',
             },
           ],
         },
