@@ -24,6 +24,30 @@ export const inpaintWithClipdrop = async (
   return URL.createObjectURL(imageBlob);
 };
 
+export const styleTransferWithClipdrop = async (
+  imageFile: string,
+  styleId: string
+): Promise<string> => {
+  const formData = new FormData();
+  formData.append('image_file', await fetch(imageFile).then((r) => r.blob()));
+  formData.append('style_id', styleId);
+
+  const response = await fetch('https://api.clipdrop.co/v1/style-transfer', {
+    method: 'POST',
+    headers: {
+      'x-api-key': CLIPDROP_API_KEY,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to style transfer with Clipdrop');
+  }
+
+  const imageBlob = await response.blob();
+  return URL.createObjectURL(imageBlob);
+};
+
 export const replaceBackgroundWithClipdrop = async (
   imageFile: string,
   prompt: string
