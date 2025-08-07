@@ -314,4 +314,38 @@ export interface ChatConfig {
   stopSequences?: string[];
 }
 
+// --- Image Editor Types ---
+
+export type BlendMode =
+  | 'normal'
+  | 'multiply'
+  | 'screen'
+  | 'overlay'
+  | 'darken'
+  | 'lighten'
+  | 'color-dodge'
+  | 'color-burn'
+  | 'hard-light'
+  | 'soft-light'
+  | 'difference'
+  | 'exclusion'
+  | 'hue'
+  | 'saturation'
+  | 'color'
+  | 'luminosity';
+
+export interface ImageLayer {
+  id: string;
+  type: 'image';
+  name: string;
+  imageUrl: string;
+  opacity: number;      // 0-1
+  isVisible: boolean;
+  blendingMode: BlendMode;
+  // Future properties: x, y, width, height, rotation, etc.
+}
+
+// In the future, we might have a union type for all layer types
+// export type Layer = ImageLayer | AdjustmentLayer | TextLayer;
+
 export const MAX_COMPARE_ITEMS = 4;

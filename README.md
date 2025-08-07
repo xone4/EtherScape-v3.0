@@ -52,22 +52,19 @@ Etherscape is designed to be intuitive and easy to use. Here's a quick overview 
 
 ## Roadmap
 
-Etherscape is on a journey to become a professional-grade, feature-rich, and highly polished creative suite. Here's a look at what's planned for the future:
+Etherscape is on a journey to become a world-class, professional-grade creative suite. The previous phases focused on core functionality, cloud integration, and initial AI features. The next evolution of Etherscape is defined by the following four phases:
 
-### Phase 1: Core Functionality & Refactoring (Completed)
-This phase focused on establishing a solid foundation with essential features and a well-structured codebase.
+### Phase 1: The Professional Studio - Core Experience & Workflow
+This phase is dedicated to building a rock-solid foundation for professional artists. Key features include a robust state management overhaul, an advanced layer-based image editor, customizable workspaces and UI themes, and powerful productivity tools like batch processing and a project file system.
 
-### Phase 2: Cloud Integration & Collaboration (Completed)
-This phase focused on integrating with cloud services for storage and enabling real-time collaboration features.
+### Phase 2: Expanding the AI Palette - Advanced Generation & Multimedia
+This phase moves beyond still images to deliver a true multimedia experience. It will introduce suites for AI-powered video generation and editing, advanced text-to-music and sound effect generation, and text/image-to-3D model creation. A key innovation will be a node-based "Creative Chain-of-Thought" editor for combining AI models.
 
-### Phase 3: AI-Powered Features & Monetization (Completed)
-This phase focused on introducing advanced AI-powered features and exploring monetization strategies.
+### Phase 3: The Connected Creator - Community & Collaboration
+This phase focuses on transforming Etherscape from a tool into a platform. We will build a vibrant community hub with public galleries, social features, and asset sharing. This phase will also introduce real-time collaborative canvases for teams and a public API and plugin marketplace to open the platform to third-party developers.
 
-### Phase 4: Advanced AI and Professional Features
-This phase will take the application to the next level with advanced AI capabilities and professional-grade editing tools.
-- **Advanced AI-Powered Image Manipulation:** Implement cutting-edge AI features for advanced image manipulation, such as generative fill, image-to-image generation, and AI-powered upscaling.
-- **Professional-Grade Editing Tools:** Add professional-grade editing tools to give users more control over their images, such as layer support, blending modes, and advanced color correction.
-- **Workflow and Productivity Enhancements:** Improve the user workflow and productivity with new features, such as batch processing, customizable workspaces, and plugin support.
+### Phase 4: Polishing & Professionalization
+The final phase is about refinement and enterprise-readiness. This includes deep performance optimization, ensuring full accessibility (WCAG 2.1 compliance), writing comprehensive documentation, and expanding monetization options with tiered subscription plans.
 
 ## Contributing
 

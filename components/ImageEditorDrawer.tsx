@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ImageHistoryItem, UserApiKeys, EditingError, ImageProviderId, ModelSetting, LogEntryType, MediaType } from '../types';
+import { useImageEditorStore } from '../stores/imageEditorStore';
+import { ImageHistoryItem, UserApiKeys, EditingError, ImageProviderId, ModelSetting, LogEntryType, MediaType, ImageLayer } from '../types';
 import { IMAGE_PROVIDERS_STATIC, DEFAULT_ART_STYLE, DEFAULT_ASPECT_RATIO, DEFAULT_CFG_SCALE, DEFAULT_STEPS, DEFAULT_SEED, CLIPDROP_MODEL_ID_INPAINT } from '../constants';
 import { applyIPAdapter, applyControlNet, describeImageWithLlava } from '../services/falService';
 import { inpaintWithClipdrop } from '../services/imageEditingService';
@@ -9,7 +10,6 @@ import { urlToFile } from '../utils';
 
 interface ImageEditorDrawerProps {
   isOpen: boolean; 
-  editingImage: ImageHistoryItem | null;
   onCloseAndClear: () => void; 
   onUpscale: (originalImage: ImageHistoryItem, scaleFactor: 2 | 4) => Promise<void>; 
   onClipdropUpscale: (originalImage: ImageHistoryItem) => Promise<void>; 
@@ -52,7 +52,6 @@ interface ImageEditorDrawerProps {
   ) => ImageHistoryItem;
   showToast: (message: string, duration?: number) => void;
   logAppEvent: (type: LogEntryType, message: string, details?: any) => void;
-  onSetEditingImage: (item: ImageHistoryItem | null) => void;
   currentMainPrompt: string; 
   onClipdropInpaint: (originalImage: ImageHistoryItem, maskFile: File, inpaintPrompt: string) => Promise<void>;
   onClipdropOutpaint: (originalImage: ImageHistoryItem, extendUp: number, extendDown: number, extendLeft: number, extendRight: number) => Promise<void>;
@@ -76,7 +75,6 @@ const TabButton: React.FC<{ active: boolean; onClick: () => void; children: Reac
 
 const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
   isOpen,
-  editingImage,
   onCloseAndClear,
   onUpscale,
   onClipdropUpscale,
@@ -94,11 +92,13 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
   addImageToHistory,
   showToast,
   logAppEvent,
-  onSetEditingImage,
   currentMainPrompt,
   onClipdropInpaint,
   onClipdropOutpaint
 }) => {
+  const { layers, selectedLayerId, updateLayer } = useImageEditorStore();
+  const activeLayer = layers.find(l => l.id === selectedLayerId);
+
   const [activeTab, setActiveTab] = useState<EditorTabType>('image');
   const [isReplicateUpscaling, setIsReplicateUpscaling] = useState(false);
   const [isClipdropUpscaling, setIsClipdropUpscaling] = useState(false);
@@ -138,16 +138,16 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
 
 
   useEffect(() => {
-    if (!isOpen || !editingImage) {
+    if (!isOpen || !activeLayer) {
       setStyleImageFile(null); setStyleImageUrlPreview(null);
       setControlImageFile(null); setControlImageUrlPreview(null);
       setLlavaPrompt(null); setIpAdapterScale(0.5);
       setControlNetType('canny'); setControlStrength(0.75);
       setActiveTab('image'); 
       setInpaintingPrompt(''); clearMaskCanvas();
-    } else if (editingImage) {
-      setActiveTab(editingImage.mediaType === 'image' ? 'image' : editingImage.mediaType);
-      if (editingImage.mediaType === 'image') {
+    } else if (activeLayer) {
+      setActiveTab(activeLayer.mediaType === 'image' ? 'image' : activeLayer.mediaType);
+      if (activeLayer.mediaType === 'image') {
         clearMaskCanvas();
         const canvas = maskCanvasRef.current;
         const image = new Image();
@@ -165,10 +165,10 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
                 }
             }
         };
-        image.src = editingImage.imageUrl;
+        image.src = activeLayer.imageUrl;
       }
     }
-  }, [isOpen, editingImage]);
+  }, [isOpen, activeLayer]);
 
   const saveMaskAction = useCallback(() => {
     if (maskCanvasRef.current) {
@@ -255,17 +255,17 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
 
 
   const handleReplicateUpscaleClick = async (scaleFactor: 2 | 4) => {
-    if (!editingImage || isReplicateUpscaling || isLoading) return;
+    if (!activeLayer || isReplicateUpscaling || isLoading) return;
     clearEditingError(); setIsReplicateUpscaling(true);
-    try { await onUpscale(editingImage, scaleFactor); } 
+    try { await onUpscale(activeLayer, scaleFactor); }
     catch (error) { console.error(`Replicate Upscale ${scaleFactor}x failed in drawer:`, error); } 
     finally { setIsReplicateUpscaling(false); }
   };
 
   const handleDoClipdropUpscale = async () => {
-    if (!editingImage || isClipdropUpscaling || isLoading || !userApiKeys.clipdrop) return;
+    if (!activeLayer || isClipdropUpscaling || isLoading || !userApiKeys.clipdrop) return;
     clearEditingError(); setIsClipdropUpscaling(true);
-    try { await onClipdropUpscale(editingImage); } 
+    try { await onClipdropUpscale(activeLayer); }
     catch (error) { console.error(`Clipdrop Upscale failed in drawer:`, error); } 
     finally { setIsClipdropUpscaling(false); }
   };
@@ -286,7 +286,13 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
                     useAlchemy: false, usePhotoReal: false,
                 };
                 onImageUpload(file); 
-                onSetEditingImage(newItem); 
+                // The store should be updated from where the action is dispatched,
+                // but for now, we'll handle it here.
+                // This will be part of a larger refactor.
+                // For now, we assume a single layer that we replace.
+                if (layers[0]?.id) {
+                  updateLayer(layers[0].id, newItem);
+                }
                 setActiveTab('image'); 
                 logAppEvent('EDITING', 'Image uploaded from device for editing.', { filename: file.name });
                 showToast(`Image "${file.name}" loaded for editing.`, 2500);
@@ -331,34 +337,34 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
   };
   
   const handleLeoImg2ImgGenerate = () => {
-    if (editingImage && !isLoading) {
-      onGenerateWithLeonardoImg2Img(editingImage.imageUrl, leoInitStrength, editingImage.id);
+    if (activeLayer && !isLoading) {
+      onGenerateWithLeonardoImg2Img(activeLayer.imageUrl, leoInitStrength, activeLayer.id);
     }
   };
 
   const handleApplyStyleTransfer = async () => {
     const falAuthToken = userApiKeys.fal_ai;
-    if (!editingImage || !styleImageFile || !falAuthToken || falAuthToken.trim() === '') {
+    if (!activeLayer || !styleImageFile || !falAuthToken || falAuthToken.trim() === '') {
         showToast("Fal.ai Auth Token, base image, and style image are required.", 3000);
         logAppEvent('WARNING', 'Fal.ai IP-Adapter: Missing token, base image, or style image.');
         return;
     }
     setIsApplyingStyle(true); clearEditingError();
     logAppEvent('EDITING', "Fal.ai: Attempting Style Transfer (IP-Adapter)", { 
-        baseImageConcept: editingImage.concept, styleImageName: styleImageFile.name, ipAdapterScale
+        baseImageConcept: activeLayer.concept, styleImageName: styleImageFile.name, ipAdapterScale
     });
     try {
-        const baseImageFile = await urlToFile(editingImage.imageUrl, `base_${editingImage.id}.png`);
+        const baseImageFile = await urlToFile(activeLayer.imageUrl, `base_${activeLayer.id}.png`);
         const newImageUrl = await applyIPAdapter(falAuthToken, baseImageFile, styleImageFile, ipAdapterScale);
         
-        const newPrompt = `Styled with ${styleImageFile.name.substring(0,15)}... (IP-Adapter) on: ${editingImage.prompt}`;
+        const newPrompt = `Styled with ${styleImageFile.name.substring(0,15)}... (IP-Adapter) on: ${activeLayer.prompt}`;
         const newHistoryItem = addImageToHistory(
-            newImageUrl, newPrompt, editingImage.concept, 'image', editingImage.artStyle || DEFAULT_ART_STYLE, 
-            editingImage.aspectRatio, 'fal_ai', 'fal-ai/ip-adapter', 
-            editingImage.negativePrompt, undefined, false, editingImage.id,
-            editingImage.cfgScale, editingImage.steps, editingImage.seed
+            newImageUrl, newPrompt, activeLayer.concept, 'image', activeLayer.artStyle || DEFAULT_ART_STYLE,
+            activeLayer.aspectRatio, 'fal_ai', 'fal-ai/ip-adapter',
+            activeLayer.negativePrompt, undefined, false, activeLayer.id,
+            activeLayer.cfgScale, activeLayer.steps, activeLayer.seed
         );
-        onSetEditingImage(newHistoryItem);
+        if (selectedLayerId) updateLayer(selectedLayerId, newHistoryItem);
         showToast("Fal.ai Style Transfer (IP-Adapter) successful!", 3000);
         logAppEvent('EDITING', "Fal.ai Style Transfer (IP-Adapter) success", { newImageUrl });
     } catch (error: any) {
@@ -371,29 +377,29 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
 
   const handleApplyControlNet = async () => {
     const falAuthToken = userApiKeys.fal_ai;
-    if (!editingImage || !controlImageFile || !falAuthToken || falAuthToken.trim() === '') {
+    if (!activeLayer || !controlImageFile || !falAuthToken || falAuthToken.trim() === '') {
         showToast("Fal.ai Auth Token, base image, and control image are required.", 3000);
         logAppEvent('WARNING', 'Fal.ai ControlNet: Missing token, base image, or control image.');
         return;
     }
     setIsApplyingControlNet(true); clearEditingError();
-    const promptForControlNet = currentMainPrompt || editingImage.prompt || editingImage.concept;
+    const promptForControlNet = currentMainPrompt || activeLayer.prompt || activeLayer.concept;
     logAppEvent('EDITING', "Fal.ai: Attempting Composition Control (ControlNet)", {
-        baseImageConcept: editingImage.concept, controlImageName: controlImageFile.name,
+        baseImageConcept: activeLayer.concept, controlImageName: controlImageFile.name,
         controlNetType, controlStrength, prompt: promptForControlNet
     });
     try {
-        const baseImageFile = await urlToFile(editingImage.imageUrl, `base_control_${editingImage.id}.png`);
+        const baseImageFile = await urlToFile(activeLayer.imageUrl, `base_control_${activeLayer.id}.png`);
         const newImageUrl = await applyControlNet(falAuthToken, baseImageFile, controlImageFile, controlNetType, controlStrength, promptForControlNet);
 
         const newPrompt = `ControlNet (${controlNetType}, Str: ${controlStrength.toFixed(2)}) on: ${promptForControlNet}`;
         const newHistoryItem = addImageToHistory(
-            newImageUrl, newPrompt, editingImage.concept, 'image', editingImage.artStyle || DEFAULT_ART_STYLE,
-            editingImage.aspectRatio, 'fal_ai', `fal-ai/controlnet-${controlNetType}`, 
-            editingImage.negativePrompt, undefined, false, editingImage.id,
-            editingImage.cfgScale, editingImage.steps, editingImage.seed
+            newImageUrl, newPrompt, activeLayer.concept, 'image', activeLayer.artStyle || DEFAULT_ART_STYLE,
+            activeLayer.aspectRatio, 'fal_ai', `fal-ai/controlnet-${controlNetType}`,
+            activeLayer.negativePrompt, undefined, false, activeLayer.id,
+            activeLayer.cfgScale, activeLayer.steps, activeLayer.seed
         );
-        onSetEditingImage(newHistoryItem);
+        if (selectedLayerId) updateLayer(selectedLayerId, newHistoryItem);
         showToast("Fal.ai Composition Control (ControlNet) successful!", 3000);
         logAppEvent('EDITING', "Fal.ai Composition Control (ControlNet) success", { newImageUrl });
     } catch (error: any) {
@@ -406,16 +412,16 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
 
   const handleDescribeWithLlava = async () => {
     const falAuthToken = userApiKeys.fal_ai;
-    if (!editingImage || !falAuthToken || falAuthToken.trim() === '') {
+    if (!activeLayer || !falAuthToken || falAuthToken.trim() === '') {
         showToast("Fal.ai Auth Token and an image are required.", 3000);
         logAppEvent('WARNING', 'Fal.ai LLaVA: Missing token or image.');
         return;
     }
     setIsDescribingWithLlava(true); clearEditingError();
     setLlavaPrompt("Describing with LLaVA (Fal.ai)...");
-    logAppEvent('EDITING', "Fal.ai: Attempting Image Description (LLaVA)", { imageConcept: editingImage.concept });
+    logAppEvent('EDITING', "Fal.ai: Attempting Image Description (LLaVA)", { imageConcept: activeLayer.concept });
     try {
-        const imageToDescribeFile = await urlToFile(editingImage.imageUrl, `llava_target_${editingImage.id}.png`);
+        const imageToDescribeFile = await urlToFile(activeLayer.imageUrl, `llava_target_${activeLayer.id}.png`);
         const description = await describeImageWithLlava(falAuthToken, imageToDescribeFile);
         setLlavaPrompt(description);
         showToast("Fal.ai LLaVA description received!", 3000);
@@ -430,7 +436,7 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
   };
   
   const handleApplyInpainting = async () => {
-      if (!editingImage || !maskCanvasRef.current ) {
+      if (!activeLayer || !maskCanvasRef.current ) {
           showToast("An image and a mask are required for inpainting.", 3000);
           logAppEvent('WARNING', 'Clipdrop Inpainting: Missing image, or mask canvas.');
           return;
@@ -441,7 +447,7 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
       }
       setIsClipdropInpainting(true); clearEditingError();
       logAppEvent('EDITING', "Clipdrop: Attempting Inpainting", {
-        baseImageConcept: editingImage.concept, prompt: inpaintingPrompt
+        baseImageConcept: activeLayer.concept, prompt: inpaintingPrompt
       });
 
       try {
@@ -455,9 +461,9 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
           
           const maskBlob = await new Promise<Blob | null>(resolve => tempMaskCanvas.toBlob(resolve, 'image/png'));
           if (!maskBlob) throw new Error("Could not create mask blob for Clipdrop Inpainting.");
-          const maskFile = new File([maskBlob], `cd_inpaint_mask_${editingImage.id}.png`, { type: 'image/png' });
+          const maskFile = new File([maskBlob], `cd_inpaint_mask_${activeLayer.id}.png`, { type: 'image/png' });
 
-          await onClipdropInpaint(editingImage, maskFile, inpaintingPrompt);
+          await onClipdropInpaint(activeLayer, maskFile, inpaintingPrompt);
           
           clearMaskCanvas(); 
           setInpaintingPrompt('');
@@ -469,7 +475,7 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
   };
 
   const handleApplyOutpainting = async () => {
-    if (!editingImage) {
+    if (!activeLayer) {
       showToast("An image is required for outpainting.", 3000);
       logAppEvent('WARNING', 'Clipdrop Outpainting: Missing image.');
       return;
@@ -481,14 +487,14 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
     setIsClipdropOutpainting(true);
     clearEditingError();
     logAppEvent('EDITING', "Clipdrop: Attempting Outpainting", {
-      baseImageConcept: editingImage.concept,
+      baseImageConcept: activeLayer.concept,
       up: outpaintUp,
       down: outpaintDown,
       left: outpaintLeft,
       right: outpaintRight,
     });
     try {
-      await onClipdropOutpaint(editingImage, outpaintUp, outpaintDown, outpaintLeft, outpaintRight);
+      await onClipdropOutpaint(activeLayer, outpaintUp, outpaintDown, outpaintLeft, outpaintRight);
     } catch (error: any) {
       logAppEvent('ERROR', "Clipdrop Outpainting failed in drawer.", { error: error.message });
     } finally {
@@ -497,36 +503,36 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
   };
 
   const handleSaveCurrentToHistory = () => {
-    if (!editingImage) {
+    if (!activeLayer) {
       showToast("No image loaded in editor to save.", 3000);
       return;
     }
     addImageToHistory(
-      editingImage.imageUrl,
-      editingImage.prompt,
-      editingImage.concept,
-      editingImage.mediaType,
-      editingImage.artStyle || DEFAULT_ART_STYLE,
-      editingImage.aspectRatio || DEFAULT_ASPECT_RATIO,
-      editingImage.provider || (selectedImageProviderId || 'gemini'), // Fallback provider
-      editingImage.modelId || (selectedModelConfig?.id || 'unknown-model'), // Fallback model
-      editingImage.negativePrompt,
-      editingImage.driveFileId, // Keep if it was already from Drive
-      editingImage.isUpscaled,
-      editingImage.originalHistoryItemId,
-      editingImage.cfgScale,
-      editingImage.steps,
-      editingImage.seed,
-      editingImage.sampler,
-      editingImage.stylePreset,
-      editingImage.leonardoPresetStyle,
-      editingImage.useAlchemy,
-      editingImage.usePhotoReal,
-      editingImage.sourceImageForImg2ImgId,
-      editingImage.initStrengthForImg2Img
+      activeLayer.imageUrl,
+      activeLayer.prompt,
+      activeLayer.concept,
+      activeLayer.mediaType,
+      activeLayer.artStyle || DEFAULT_ART_STYLE,
+      activeLayer.aspectRatio || DEFAULT_ASPECT_RATIO,
+      activeLayer.provider || (selectedImageProviderId || 'gemini'), // Fallback provider
+      activeLayer.modelId || (selectedModelConfig?.id || 'unknown-model'), // Fallback model
+      activeLayer.negativePrompt,
+      activeLayer.driveFileId, // Keep if it was already from Drive
+      activeLayer.isUpscaled,
+      activeLayer.originalHistoryItemId,
+      activeLayer.cfgScale,
+      activeLayer.steps,
+      activeLayer.seed,
+      activeLayer.sampler,
+      activeLayer.stylePreset,
+      activeLayer.leonardoPresetStyle,
+      activeLayer.useAlchemy,
+      activeLayer.usePhotoReal,
+      activeLayer.sourceImageForImg2ImgId,
+      activeLayer.initStrengthForImg2Img
     );
-    showToast(`Image "${editingImage.concept}" saved to history.`, 2500);
-    logAppEvent('EDITING', 'Current editor image saved to history manually.', { concept: editingImage.concept });
+    showToast(`Image "${activeLayer.concept}" saved to history.`, 2500);
+    logAppEvent('EDITING', 'Current editor image saved to history manually.', { concept: activeLayer.concept });
   };
 
 
@@ -535,15 +541,15 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
   const leonardoApiKeySet = userApiKeys.leonardo_ai && userApiKeys.leonardo_ai.trim() !== '';
   const falAiApiKeySet = userApiKeys.fal_ai && userApiKeys.fal_ai.trim() !== '';
   
-  const canReplicateUpscale = replicateApiKeySet && editingImage && editingImage.mediaType === 'image' && !editingImage.isUpscaled;
-  const canClipdropUpscale = clipdropApiKeySet && editingImage && editingImage.mediaType === 'image' && !editingImage.isUpscaled;
-  const canClipdropInpaint = clipdropApiKeySet && editingImage && editingImage.mediaType === 'image';
-  const canClipdropOutpaint = clipdropApiKeySet && editingImage && editingImage.mediaType === 'image';
+  const canReplicateUpscale = replicateApiKeySet && activeLayer && activeLayer.mediaType === 'image' && !activeLayer.isUpscaled;
+  const canClipdropUpscale = clipdropApiKeySet && activeLayer && activeLayer.mediaType === 'image' && !activeLayer.isUpscaled;
+  const canClipdropInpaint = clipdropApiKeySet && activeLayer && activeLayer.mediaType === 'image';
+  const canClipdropOutpaint = clipdropApiKeySet && activeLayer && activeLayer.mediaType === 'image';
   
   const isAnyToolLoading = isLoading || isReplicateUpscaling || isClipdropUpscaling || isClipdropInpainting || isClipdropOutpainting || isProcessingLiveQuery || isApplyingStyle || isApplyingControlNet || isDescribingWithLlava;
 
-  const showFalAiStudio = editingImage && editingImage.mediaType === 'image';
-  const showLeonardoImg2Img = editingImage && editingImage.mediaType === 'image' && selectedImageProviderId === 'leonardo_ai' && leonardoApiKeySet && selectedModelConfig?.supportsImageToImage === true;
+  const showFalAiStudio = activeLayer && activeLayer.mediaType === 'image';
+  const showLeonardoImg2Img = activeLayer && activeLayer.mediaType === 'image' && selectedImageProviderId === 'leonardo_ai' && leonardoApiKeySet && selectedModelConfig?.supportsImageToImage === true;
 
 
   return (
@@ -564,7 +570,7 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
             key={tab} 
             active={activeTab === tab} 
             onClick={() => setActiveTab(tab)}
-            disabled={!editingImage && tab !== 'image'} 
+            disabled={!activeLayer && tab !== 'image'}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
           </TabButton>
@@ -574,7 +580,7 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
 
       <div className="p-3 overflow-y-auto flex-grow scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-700/50 editor-drawer-content">
         <div className="space-y-4">
-            {(activeTab === 'image' || !editingImage) && (
+            {(activeTab === 'image' || !activeLayer) && (
                 <div className="p-2.5 border border-gray-600 rounded-md bg-gray-700/50">
                     <h3 className="text-sm font-medium text-gray-300 mb-2">Load Image</h3>
                     <input type="file" accept="image/png, image/jpeg, image/webp, image/gif" onChange={handleFileUpload} ref={fileInputRef} className="hidden" id="local-image-upload" />
@@ -585,7 +591,7 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
                     {isProcessingLiveQuery ? ( <><svg className="animate-spin -ml-1 mr-1.5 h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle> <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path> </svg> Capturing...</>
                     ) : ( <> <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" viewBox="0 0 20 20" fill="currentColor"> <path d="M2 4a1 1 0 011-1h1a1 1 0 011 1v1a1 1 0 01-1 1H3a1 1 0 01-1-1V4zM6 4a1 1 0 011-1h2a1 1 0 011 1v1a1 1 0 01-1 1H7a1 1 0 01-1-1V4zM2 9a1 1 0 011-1h1a1 1 0 011 1v1a1 1 0 01-1 1H3a1 1 0 01-1-1V9zM6 9a1 1 0 011-1h2a1 1 0 011 1v1a1 1 0 01-1 1H7a1 1 0 01-1-1V9zM2 14a1 1 0 011-1h1a1 1 0 011 1v1a1 1 0 01-1 1H3a1 1 0 01-1-1v-1zM6 14a1 1 0 011-1h2a1 1 0 011 1v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-1z" /> <path fillRule="evenodd" d="M12 3a1 1 0 011 1v12a1 1 0 11-2 0V4a1 1 0 011-1zM15.293 4.293a1 1 0 011.414 0l2 2a1 1 0 010 1.414l-2 2a1 1 0 01-1.414-1.414L16.586 7 15.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /> </svg> Live Capture </> )}
                     </button>
-                    {editingImage && editingImage.mediaType === 'image' && (
+                    {activeLayer && activeLayer.mediaType === 'image' && (
                         <button onClick={handleSaveCurrentToHistory} disabled={isAnyToolLoading} className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-md shadow-sm transition-all text-xs disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1.5" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z" /></svg>
                             Save to History
@@ -594,10 +600,10 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
                 </div>
             )}
 
-            {editingImage && editingImage.mediaType === 'image' && (
+            {activeLayer && activeLayer.mediaType === 'image' && (
                 <>
                     <div className="border border-gray-600 rounded-md overflow-hidden relative" style={{minHeight: '150px'}}> 
-                        <img src={editingImage.imageUrl} alt={editingImage.concept} className="w-full h-auto object-contain max-h-60" />
+                        <img src={activeLayer.imageUrl} alt={activeLayer.concept} className="w-full h-auto object-contain max-h-60" />
                         {activeTab === 'creative' && (
                             <canvas
                                 ref={maskCanvasRef}
@@ -613,20 +619,20 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
                             ></canvas>
                         )}
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">Editing Image: <span className="font-semibold text-gray-300 truncate block" title={editingImage.concept}>{editingImage.concept}</span></p>
+                    <p className="text-xs text-gray-400 mt-1">Editing Image: <span className="font-semibold text-gray-300 truncate block" title={activeLayer.concept}>{activeLayer.concept}</span></p>
                     {editingError && !editingError.tool.startsWith('clipdrop_inpaint') && ( 
                         <div className="my-2 p-2 bg-red-800/60 border border-red-700 rounded-md text-xs text-red-200 break-words"> <strong>Error:</strong> {editingError.message} <button onClick={clearEditingError} className="ml-2 text-red-100 hover:text-white underline">(Clear)</button></div>
                     )}
                 </>
             )}
 
-            {editingImage && editingImage.mediaType === 'image' && (
+            {activeLayer && activeLayer.mediaType === 'image' && (
                 <>
                     {activeTab === 'image' && (
                         <>
                             <div className="p-2.5 border border-gray-600 rounded-md bg-gray-700/50">
                                 <h3 className="text-sm font-medium text-gray-300 mb-2">Upscale Image</h3>
-                                {editingImage.isUpscaled && ( <p className="text-xs text-blue-300 bg-blue-800/30 p-2 rounded-md mb-2"> This image has already been upscaled. Further upscaling is not recommended. </p> )}
+                                {activeLayer.isUpscaled && ( <p className="text-xs text-blue-300 bg-blue-800/30 p-2 rounded-md mb-2"> This image has already been upscaled. Further upscaling is not recommended. </p> )}
                                 <div className="space-y-2">
                                     {!replicateApiKeySet && ( <p className="text-xs text-yellow-400 bg-yellow-800/30 p-2 rounded-md"> Replicate API Key needed for Replicate upscale options. </p> )}
                                     <button onClick={() => handleReplicateUpscaleClick(2)} disabled={!canReplicateUpscale || isReplicateUpscaling || isAnyToolLoading} className="w-full px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white font-semibold rounded-md shadow-sm transition-all text-xs disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center" > {isReplicateUpscaling ? ( <><svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Upscaling 2x (Replicate)...</> ) : "Upscale 2x (Replicate)"} </button>
@@ -642,10 +648,10 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
                                     <h3 className="text-sm font-medium text-gray-300 mb-2">Image-to-Image (Leonardo.Ai)</h3>
                                     <p className="text-xs text-gray-400 mb-1"> Uses current editor image as base. Ensure main prompt (Controls panel) describes desired transformation. </p>
                                     <div> <label htmlFor="leo-init-strength" className="block text-xs font-medium text-gray-300 mb-1"> Influence Strength: <span className="text-gray-400">{leoInitStrength.toFixed(2)}</span> </label> <input type="range" id="leo-init-strength" min="0.1" max="0.9" step="0.05" value={leoInitStrength} onChange={(e) => setLeoInitStrength(parseFloat(e.target.value))} disabled={isAnyToolLoading} className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500" /> <p className="text-xs text-gray-400 mt-0.5">Higher values respect original image more.</p> </div>
-                                    <button onClick={handleLeoImg2ImgGenerate} disabled={isAnyToolLoading || !editingImage} className="w-full mt-3 px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-md shadow-sm transition-all text-xs disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center" > {isLoading && selectedImageProviderId === 'leonardo_ai' ? ( <><svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Generating (Img2Img)...</> ) : "Generate with Img2Img (Leonardo)"} </button>
+                                    <button onClick={handleLeoImg2ImgGenerate} disabled={isAnyToolLoading || !activeLayer} className="w-full mt-3 px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-md shadow-sm transition-all text-xs disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center" > {isLoading && selectedImageProviderId === 'leonardo_ai' ? ( <><svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Generating (Img2Img)...</> ) : "Generate with Img2Img (Leonardo)"} </button>
                                 </div>
                             )}
-                            {!showLeonardoImg2Img && selectedImageProviderId === 'leonardo_ai' && editingImage && editingImage.mediaType === 'image' && ( <p className="text-xs text-yellow-400 bg-yellow-800/30 p-2 rounded-md"> {(leonardoApiKeySet && selectedModelConfig && !selectedModelConfig.supportsImageToImage) ? `Selected Leonardo model "${selectedModelConfig?.displayName}" does not support Image-to-Image. Choose a compatible model (e.g., Leonardo Diffusion XL, DreamShaper v7) in Advanced Settings.` : "Leonardo.Ai Image-to-Image requires a compatible model and API key. Please check your settings."} </p> )}
+                            {!showLeonardoImg2Img && selectedImageProviderId === 'leonardo_ai' && activeLayer && activeLayer.mediaType === 'image' && ( <p className="text-xs text-yellow-400 bg-yellow-800/30 p-2 rounded-md"> {(leonardoApiKeySet && selectedModelConfig && !selectedModelConfig.supportsImageToImage) ? `Selected Leonardo model "${selectedModelConfig?.displayName}" does not support Image-to-Image. Choose a compatible model (e.g., Leonardo Diffusion XL, DreamShaper v7) in Advanced Settings.` : "Leonardo.Ai Image-to-Image requires a compatible model and API key. Please check your settings."} </p> )}
                         </>
                     )}
 
@@ -715,7 +721,7 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
                                         <button onClick={() => styleImageInputRef.current?.click()} disabled={isAnyToolLoading || !falAiApiKeySet} className="w-full mb-2 px-3 py-1.5 bg-gray-600 hover:bg-gray-500 text-xs rounded disabled:opacity-50"> {styleImageFile ? `Style: ${styleImageFile.name.substring(0,20)}...` : "Upload Style Image"} </button>
                                         {styleImageUrlPreview && <img src={styleImageUrlPreview} alt="Style preview" className="w-full h-24 object-contain rounded border border-gray-500 mb-2 bg-black/20"/>}
                                         <div> <label htmlFor="ip-adapter-scale" className="block text-xs text-gray-400 mb-0.5">Style Influence: <span className="text-gray-300">{ipAdapterScale.toFixed(2)}</span></label> <input type="range" id="ip-adapter-scale" min="0.1" max="1.0" step="0.05" value={ipAdapterScale} onChange={(e) => setIpAdapterScale(parseFloat(e.target.value))} disabled={isAnyToolLoading || !falAiApiKeySet} className="w-full h-1.5 bg-gray-500 rounded appearance-none cursor-pointer accent-teal-500"/> </div>
-                                        <button onClick={handleApplyStyleTransfer} disabled={!editingImage || !styleImageFile || isAnyToolLoading || !falAiApiKeySet} className="w-full mt-2 px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-xs rounded disabled:opacity-50"> {isApplyingStyle ? "Applying Style..." : "Apply Style Transfer"} </button>
+                                        <button onClick={handleApplyStyleTransfer} disabled={!activeLayer || !styleImageFile || isAnyToolLoading || !falAiApiKeySet} className="w-full mt-2 px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-xs rounded disabled:opacity-50"> {isApplyingStyle ? "Applying Style..." : "Apply Style Transfer"} </button>
                                     </div>
 
                                     <div className="p-2 border border-gray-600 rounded bg-gray-700/40">
@@ -725,13 +731,13 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
                                         {controlImageUrlPreview && <img src={controlImageUrlPreview} alt="Control preview" className="w-full h-24 object-contain rounded border border-gray-500 mb-2 bg-black/20"/>}
                                         <div> <label htmlFor="controlnet-type" className="block text-xs text-gray-400 mb-0.5">Control Type</label> <select id="controlnet-type" value={controlNetType} onChange={(e) => setControlNetType(e.target.value)} disabled={isAnyToolLoading || !falAiApiKeySet} className="w-full p-1.5 text-xs bg-gray-600 border border-gray-500 rounded focus:ring-teal-500 focus:border-teal-500"> <option value="canny">Canny (Edges)</option> <option value="depth">Depth</option> <option value="human_pose">Human Pose</option> <option value="scribble">Scribble / Sketch</option> <option value="mlsd">MLSD (Lines)</option> </select> </div>
                                         <div className="mt-1.5"> <label htmlFor="control-strength" className="block text-xs text-gray-400 mb-0.5">Control Strength: <span className="text-gray-300">{controlStrength.toFixed(2)}</span></label> <input type="range" id="control-strength" min="0.1" max="2.0" step="0.05" value={controlStrength} onChange={(e) => setControlStrength(parseFloat(e.target.value))} disabled={isAnyToolLoading || !falAiApiKeySet} className="w-full h-1.5 bg-gray-500 rounded appearance-none cursor-pointer accent-teal-500"/> </div>
-                                        <button onClick={handleApplyControlNet} disabled={!editingImage || !controlImageFile || isAnyToolLoading || !falAiApiKeySet } className="w-full mt-2 px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-xs rounded disabled:opacity-50"> {isApplyingControlNet ? "Applying Control..." : "Generate with Control"} </button>
+                                        <button onClick={handleApplyControlNet} disabled={!activeLayer || !controlImageFile || isAnyToolLoading || !falAiApiKeySet } className="w-full mt-2 px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-xs rounded disabled:opacity-50"> {isApplyingControlNet ? "Applying Control..." : "Generate with Control"} </button>
                                         <p className="text-[10px] text-gray-500 mt-1">Uses the main prompt from the Controls panel.</p>
                                     </div>
                                     
                                     <div className="p-2 border border-gray-600 rounded bg-gray-700/40">
                                         <h4 className="text-sm font-medium text-gray-300 mb-1.5">Describe Image (LLaVA)</h4>
-                                        <button onClick={handleDescribeWithLlava} disabled={!editingImage || isAnyToolLoading || !falAiApiKeySet} className="w-full mb-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-xs rounded disabled:opacity-50"> {isDescribingWithLlava ? "Describing..." : "Describe Current Image"} </button>
+                                        <button onClick={handleDescribeWithLlava} disabled={!activeLayer || isAnyToolLoading || !falAiApiKeySet} className="w-full mb-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-xs rounded disabled:opacity-50"> {isDescribingWithLlava ? "Describing..." : "Describe Current Image"} </button>
                                         {llavaPrompt && ( <textarea readOnly value={llavaPrompt} rows={3} className="w-full p-1.5 text-xs bg-gray-600 border-gray-500 rounded scrollbar-thin scrollbar-thumb-gray-500 scrollbar-track-gray-700/50" placeholder="Description will appear here..."/> )}
                                     </div>
                                 </div>
@@ -743,45 +749,45 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
 
             {activeTab === 'video' && (
                 <>
-                  {!editingImage || editingImage.mediaType !== 'video' ? ( <p className="text-gray-400 text-center p-4">Load a video item from history to see details.</p>) : (
+                  {!activeLayer || activeLayer.mediaType !== 'video' ? ( <p className="text-gray-400 text-center p-4">Load a video item from history to see details.</p>) : (
                     <div className="p-2.5 border border-gray-600 rounded-md bg-gray-700/50">
                         <h3 className="text-sm font-medium text-gray-300 mb-2">Video Details</h3>
-                        <video src={editingImage.imageUrl} controls className="w-full rounded-md mb-2 max-h-60" />
-                        <p className="text-xs text-gray-400">Concept: <span className="text-gray-300">{editingImage.concept}</span></p>
-                        <p className="text-xs text-gray-400">Source Prompt: <span className="text-gray-300 italic">{editingImage.prompt}</span></p>
-                        <p className="text-xs text-gray-400">Provider: <span className="text-gray-300">{editingImage.provider} ({editingImage.modelDisplayName || editingImage.modelId})</span></p>
+                        <video src={activeLayer.imageUrl} controls className="w-full rounded-md mb-2 max-h-60" />
+                        <p className="text-xs text-gray-400">Concept: <span className="text-gray-300">{activeLayer.concept}</span></p>
+                        <p className="text-xs text-gray-400">Source Prompt: <span className="text-gray-300 italic">{activeLayer.prompt}</span></p>
+                        <p className="text-xs text-gray-400">Provider: <span className="text-gray-300">{activeLayer.provider} ({activeLayer.modelDisplayName || activeLayer.modelId})</span></p>
                     </div>
                   )}
                 </>
             )}
             {activeTab === 'audio' && (
                  <>
-                  {!editingImage || editingImage.mediaType !== 'audio' ? ( <p className="text-gray-400 text-center p-4">Load an audio item from history to see details.</p>) : (
+                  {!activeLayer || activeLayer.mediaType !== 'audio' ? ( <p className="text-gray-400 text-center p-4">Load an audio item from history to see details.</p>) : (
                     <div className="p-2.5 border border-gray-600 rounded-md bg-gray-700/50">
                         <h3 className="text-sm font-medium text-gray-300 mb-2">Audio Details</h3>
-                        <audio src={editingImage.imageUrl} controls className="w-full mb-2" />
-                        <p className="text-xs text-gray-400">Concept: <span className="text-gray-300">{editingImage.concept}</span></p>
-                        <p className="text-xs text-gray-400">Source Prompt: <span className="text-gray-300 italic">{editingImage.prompt}</span></p>
-                        <p className="text-xs text-gray-400">Provider: <span className="text-gray-300">{editingImage.provider} ({editingImage.modelDisplayName || editingImage.modelId})</span></p>
+                        <audio src={activeLayer.imageUrl} controls className="w-full mb-2" />
+                        <p className="text-xs text-gray-400">Concept: <span className="text-gray-300">{activeLayer.concept}</span></p>
+                        <p className="text-xs text-gray-400">Source Prompt: <span className="text-gray-300 italic">{activeLayer.prompt}</span></p>
+                        <p className="text-xs text-gray-400">Provider: <span className="text-gray-300">{activeLayer.provider} ({activeLayer.modelDisplayName || activeLayer.modelId})</span></p>
                     </div>
                   )}
                 </>
             )}
             
-            {!editingImage && (activeTab === 'image' || activeTab === 'creative') && (
+            {!activeLayer && (activeTab === 'image' || activeTab === 'creative') && (
                 <p className="text-gray-400 text-center p-4">Upload or capture an image to enable editing tools.</p>
             )}
-            {editingImage && editingImage.mediaType !== 'video' && activeTab === 'video' && (
+            {activeLayer && activeLayer.mediaType !== 'video' && activeTab === 'video' && (
                  <p className="text-gray-400 text-center p-4">Current media is not a video. Load a video from history to see details.</p>
             )}
-            {editingImage && editingImage.mediaType !== 'audio' && activeTab === 'audio' && (
+            {activeLayer && activeLayer.mediaType !== 'audio' && activeTab === 'audio' && (
                  <p className="text-gray-400 text-center p-4">Current media is not audio. Load an audio item from history to see details.</p>
             )}
             
-            {editingImage && editingImage.mediaType !== 'image' && (activeTab === 'image' || activeTab === 'creative') && (
+            {activeLayer && activeLayer.mediaType !== 'image' && (activeTab === 'image' || activeTab === 'creative') && (
                 <div className="p-2.5 border border-dashed border-gray-600 rounded-md bg-gray-700/30 mt-4">
                     <h3 className="text-sm font-medium text-gray-400 mb-1">Editing Tools Not Applicable</h3>
-                    <p className="text-xs text-gray-500">The current media type ({editingImage.mediaType}) does not support these image editing tools.</p>
+                    <p className="text-xs text-gray-500">The current media type ({activeLayer.mediaType}) does not support these image editing tools.</p>
                 </div>
             )}
 

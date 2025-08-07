@@ -66,18 +66,23 @@ export const developmentPlanData: DevPlanData = {
   ],
   "inProgress": [],
   "future": [
-    // --- Phase 1: Core Experience & Foundation ---
-    "Component-Level State Management: Refactor App.tsx monolith to component-oriented state.",
-    "Advanced In-App Image Editor: Add color adjustments, filters, text overlays, and cropping.",
-    "Community-Sourced Art Styles: Allow users to submit and vote on new art styles.",
-    "Themed UI & Customization: Introduce user-selectable themes (e.g., dark, light, cyberpunk).",
-    // --- Phase 2: Expanding the Creative Toolkit ---
-    "Video Generation & Editing: Introduce video generation and a simple editor with trimming, audio, and transitions.",
-    "3D Model Generation: Integrate a 3D model generation service and a simple 3D viewer.",
-    "AI-Powered Music Generation: Integrate a more advanced AI music generation service.",
-    // --- Phase 3: Community & Collaboration ---
-    "Community Gallery & Social Features: Implement a gallery with user profiles, likes, comments, and social sharing.",
-    "Real-Time Collaborative Canvas: Create a collaborative canvas for multiple users to work on the same image/video.",
-    "Plugin & Extension Marketplace: Build a marketplace for third-party developers to extend the application's functionality."
+    "--- المرحلة الأولى: الاستوديو الاحترافي - تحسين التجربة الأساسية وسير العمل ---",
+    "إعادة هيكلة إدارة الحالة (State Management): استبدال نظام React Context بحل أكثر قوة مثل Zustand أو Jotai.",
+    "تطوير محرر الصور المتقدم: بناء محرر مع نظام طبقات، تعديلات غير مدمرة، أداة نصوص، وأدوات تحديد.",
+    "تخصيص واجهة المستخدم: تمكين المستخدمين من تخصيص وحفظ مساحات العمل، وتوفير ثيمات متعددة.",
+    "تحسينات الإنتاجية: إضافة المعالجة بالدفعات، مدير اختصارات، ونظام ملفات مشروع (.etherscape).",
+    "--- المرحلة الثانية: توسيع لوحة الذكاء الاصطناعي - الوسائط المتعددة والتوليد المتقدم ---",
+    "جناح إنتاج الفيديو: أدوات لإنشاء وتحرير الفيديو (صورة إلى فيديو، نص إلى فيديو، محرر بسيط).",
+    "جناح إنتاج الصوت: أدوات لتوليد موسيقى من نص، مؤثرات صوتية، واستنساخ الصوت.",
+    "التوليد ثلاثي الأبعاد: دمج نماذج نص/صورة إلى 3D مع عارض مدمج وتصدير.",
+    "ميزة 'سلسلة الفكر' الإبداعية: محرر مرئي لربط نماذج الذكاء الاصطناعي معًا.",
+    "--- المرحلة الثالثة: المبدع المتصل - المجتمع والميزات التشاركية ---",
+    "المركز المجتمعي: معرض أعمال عام، ملفات شخصية، ميزة 'التفريع'، ومكتبة أصول مجتمعية.",
+    "التعاون في الوقت الفعلي: لوحة إبداعية مشتركة مع مؤشرات حية ودردشة مدمجة.",
+    "سوق الإضافات وواجهة برمجة التطبيقات (API): تطوير API عامة وسوق للإضافات المطورة من المجتمع.",
+    "--- المرحلة الرابعة: الصقل والاحترافية النهائية ---",
+    "تحسين الأداء وإمكانية الوصول: تحسينات عميقة على الأداء وتطبيق معايير الوصول العالمية (WCAG 2.1).",
+    "التوثيق الشامل: كتابة أدلة استخدام مفصلة وتوثيق تقني لواجهة برمجة التطبيقات.",
+    "تطوير نموذج الربح: بناء خطط اشتراك متدرجة باستخدام تكامل Stripe الحالي."
   ]
 };
