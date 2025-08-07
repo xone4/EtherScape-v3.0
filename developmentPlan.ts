@@ -66,13 +66,18 @@ export const developmentPlanData: DevPlanData = {
   ],
   "inProgress": [],
   "future": [
-    // --- Phase 2: Improve User Experience and Add New Features (as per user plan) ---
-    // --- Phase 3: Advanced Features and Integrated Ecosystem (as per user plan) ---
-    "Community Gallery: Develop a platform for users to share creations (requires backend & auth).",
-    "Image Caching: Implement client-side caching (Cache API/Service Worker) for faster history/image loading.",
-    "User Data Export/Import: Allow backup/restore of concepts, presets, and history via JSON.",
-    // --- Carry-over Future Items (from original plan) ---
-    "User accounts/profiles (beyond Drive auth) for multi-device sync.",
-    "Enhanced accessibility (WCAG compliance review)."
+    // --- Phase 1: Core Experience & Foundation ---
+    "Component-Level State Management: Refactor App.tsx monolith to component-oriented state.",
+    "Advanced In-App Image Editor: Add color adjustments, filters, text overlays, and cropping.",
+    "Community-Sourced Art Styles: Allow users to submit and vote on new art styles.",
+    "Themed UI & Customization: Introduce user-selectable themes (e.g., dark, light, cyberpunk).",
+    // --- Phase 2: Expanding the Creative Toolkit ---
+    "Video Generation & Editing: Introduce video generation and a simple editor with trimming, audio, and transitions.",
+    "3D Model Generation: Integrate a 3D model generation service and a simple 3D viewer.",
+    "AI-Powered Music Generation: Integrate a more advanced AI music generation service.",
+    // --- Phase 3: Community & Collaboration ---
+    "Community Gallery & Social Features: Implement a gallery with user profiles, likes, comments, and social sharing.",
+    "Real-Time Collaborative Canvas: Create a collaborative canvas for multiple users to work on the same image/video.",
+    "Plugin & Extension Marketplace: Build a marketplace for third-party developers to extend the application's functionality."
   ]
 };
