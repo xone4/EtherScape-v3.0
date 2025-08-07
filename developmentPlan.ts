@@ -61,12 +61,12 @@ export const developmentPlanData: DevPlanData = {
     "In-app Image Editing: Add Out-painting tools using provider APIs (e.g., Stability AI, Clipdrop).",
     "Deeper Google Drive Integration: Allow browsing and loading from user's 'Etherscape_Generated_Images' folder.",
     "UI/UX - Provider Icons: Display provider icons on history thumbnails and main image during load.",
-    "UI/UX - Loading Skeletons: Implement skeleton loaders for smoother perceived performance, especially in history."
+    "UI/UX - Loading Skeletons: Implement skeleton loaders for smoother perceived performance, especially in history.",
+    "UI/UX - Onboarding Tour: Create an interactive guide for new users explaining key features."
   ],
   "inProgress": [],
   "future": [
     // --- Phase 2: Improve User Experience and Add New Features (as per user plan) ---
-    "UI/UX - Onboarding Tour: Create an interactive guide for new users explaining key features.",
     // --- Phase 3: Advanced Features and Integrated Ecosystem (as per user plan) ---
     "Community Gallery: Develop a platform for users to share creations (requires backend & auth).",
     "Image Caching: Implement client-side caching (Cache API/Service Worker) for faster history/image loading.",

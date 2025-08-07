@@ -20,6 +20,7 @@ import CompareViewModal from './components/CompareViewModal';
 import VideoDisplayModal from './components/VideoDisplayModal';
 import AudioPlayer from './components/AudioPlayer';
 import DriveBrowserModal from './components/DriveBrowserModal';
+import OnboardingTour from './components/OnboardingTour';
 import { urlToFile } from './utils';
 
 // Custom Hooks
@@ -132,6 +133,7 @@ const AppContent: React.FC = () => {
   const [isAudioPlayerVisible, setIsAudioPlayerVisible] = useState<boolean>(false);
   const [audioTitleForPlayer, setAudioTitleForPlayer] = useState<string | null>(null);
   const [isDriveBrowserOpen, setIsDriveBrowserOpen] = useState<boolean>(false);
+  const [isTourOpen, setIsTourOpen] = useState<boolean>(false);
   
   const {
     isDriveAuthenticated, driveUserEmail, isDriveLoading, driveError, setDriveError, 
@@ -1486,10 +1488,11 @@ const AppContent: React.FC = () => {
             </button>
         )}
       </div>
-      <footer className={`fixed bottom-0 left-0 right-0 w-full bg-gray-800/80 backdrop-blur-md shadow-top z-30 transform transition-transform duration-300 ease-[cubic-bezier(0.37,0,0.63,1)] max-h-[40vh] overflow-y-hidden flex flex-col ${isHistoryDrawerOpen ? 'translate-y-0' : 'translate-y-full'}`}
+      <footer className={`fixed bottom-0 left-0 right-0 w-full bg-gray-800/80 backdrop-blur-md shadow-top z-30 transform transition-transform duration-300 ease-[cubic-bezier(0.37,0,0.63,1)] max-h-[40vh] overflow-y-hidden flex flex-col ${isHistoryDrawerOpen ? 'translate-y-0' : 'translate-y-full'} history-drawer`}
         aria-hidden={!isHistoryDrawerOpen} >
         <ImageHistory 
             history={imageHistory} 
+            isGenerating={isGenerationLoading}
             onSelectItemAction={handleHistoryItemAction} 
             isVisible={isHistoryDrawerOpen} 
             isCompareModeActive={isCompareModeActive}
@@ -1521,8 +1524,10 @@ const AppContent: React.FC = () => {
             onSetChatSystemPromptBase={handleSetCurrentChatSystemPromptBase} currentChatConfig={currentChatConfig}
             onSetChatConfig={handleSetCurrentChatConfig} onConfirmChatSettingsAsDefault={handleConfirmChatSettingsAsDefault}
             currentChatModelId={selectedChatModelId} onSetChatModelId={setSelectedChatModelId}
+            onStartTour={() => setIsTourOpen(true)}
           />
         )}
+        <OnboardingTour run={isTourOpen} onClose={() => setIsTourOpen(false)} />
         {isCameraModalOpen && (
           <CameraCaptureModal
             isOpen={isCameraModalOpen} onClose={handleLiveQueryCancel} onCapture={handleCaptureAndProcessImage}

@@ -44,7 +44,7 @@ interface AdvancedSettingsModalProps {
   onConfirmChatSettingsAsDefault: () => void;
 }
 
-type ActiveTab = 'logs' | 'devPlan' | 'troubleshooting' | 'imageProviders' | 'chatSettings';
+type ActiveTab = 'logs' | 'devPlan' | 'troubleshooting' | 'imageProviders' | 'chatSettings' | 'help';
 
 const TabButton: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
   <button
@@ -112,7 +112,8 @@ const AdvancedSettingsModal: React.FC<AdvancedSettingsModalProps> = ({
   onSetChatSystemPromptBase,
   currentChatConfig,
   onSetChatConfig,
-  onConfirmChatSettingsAsDefault
+  onConfirmChatSettingsAsDefault,
+  onStartTour,
 }) => {
   const [activeTab, setActiveTab] = useState<ActiveTab>('imageProviders');
   const [tempImageApiKey, setTempImageApiKey] = useState<string>('');
@@ -291,10 +292,24 @@ const AdvancedSettingsModal: React.FC<AdvancedSettingsModalProps> = ({
             <TabButton active={activeTab === 'logs'} onClick={() => setActiveTab('logs')}>Logs</TabButton>
             <TabButton active={activeTab === 'devPlan'} onClick={() => setActiveTab('devPlan')}>Dev Plan</TabButton>
             <TabButton active={activeTab === 'troubleshooting'} onClick={() => setActiveTab('troubleshooting')}>Troubleshoot</TabButton>
+            <TabButton active={activeTab === 'help'} onClick={() => setActiveTab('help')}>Help</TabButton>
           </div>
         </div>
 
         <div className="p-3 sm:p-4 flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-700/50 text-sm">
+          {activeTab === 'help' && (
+            <div>
+              <h3 className="text-base sm:text-lg font-semibold text-gray-200 mb-3">Help & Support</h3>
+              <div className="space-y-4">
+                <button
+                  onClick={onStartTour}
+                  className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-md shadow-md transition-all duration-150 ease-in-out text-sm flex items-center justify-center"
+                >
+                  Start Application Tour
+                </button>
+              </div>
+            </div>
+          )}
           {activeTab === 'logs' && (
             <div>
               <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-2 gap-2">

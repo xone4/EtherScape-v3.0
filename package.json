@@ -10,9 +10,10 @@
   },
   "dependencies": {
     "@google/genai": "^1.4.0",
+    "classnames": "^2.5.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "classnames": "^2.5.1"
+    "react-joyride-react-19": "^2.9.2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

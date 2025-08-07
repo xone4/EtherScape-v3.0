@@ -65,7 +65,8 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
   }
 
   const containerClasses = classNames(
-    "w-full h-full flex flex-col relative rounded-lg shadow-xl bg-gray-800/30" // Changed to flex-col
+    "w-full h-full flex flex-col relative rounded-lg shadow-xl bg-gray-800/30", // Changed to flex-col
+    "image-display"
   );
   
   const imageViewportClasses = classNames(
