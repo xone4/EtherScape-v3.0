@@ -1,7 +1,29 @@
 
-import React, { useState, useEffect, useRef } from 'react'; 
+import React, { useState, useEffect, useRef } from 'react';
 import classNames from 'classnames';
-import SharedZoomControls from './SharedZoomControls'; 
+import SharedZoomControls from './SharedZoomControls';
+import { ImageProviderId } from '../types';
+
+import GeminiIcon from '../assets/gemini.svg';
+import StabilityAIIcon from '../assets/stability_ai.svg';
+import LeonardoAIIcon from '../assets/leonardo_ai.svg';
+import ClipdropIcon from '../assets/clipdrop.svg';
+import ReplicateIcon from '../assets/replicate.svg';
+import FalAIIcon from '../assets/fal_ai.svg';
+
+const providerIcons: Record<ImageProviderId, string> = {
+    'gemini': GeminiIcon,
+    'stability_ai': StabilityAIIcon,
+    'leonardo_ai': LeonardoAIIcon,
+    'clipdrop': ClipdropIcon,
+    'replicate': ReplicateIcon,
+    'fal_ai': FalAIIcon,
+};
+
+const getProviderIcon = (providerId?: ImageProviderId) => {
+    if (!providerId) return null;
+    return providerIcons[providerId] || null;
+};
 
 interface ImageDisplayProps {
   imageUrl: string | null;
@@ -9,6 +31,7 @@ interface ImageDisplayProps {
   concept: string;
   isLoading: boolean;
   loadingMessageOverride?: string;
+  providerId?: ImageProviderId;
   providerDisplayName?: string;
   modelDisplayName?: string;
   zoomLevel: number;
@@ -23,6 +46,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
   concept,
   isLoading,
   loadingMessageOverride,
+  providerId,
   providerDisplayName,
   modelDisplayName,
   zoomLevel,
@@ -94,7 +118,12 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 
         {isLoading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 bg-opacity-80 z-10">
-            <div className="w-16 h-16 border-4 border-t-transparent border-blue-500 rounded-full animate-spin"></div>
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-t-transparent border-blue-500 rounded-full animate-spin"></div>
+              {getProviderIcon(providerId) && (
+                <img src={getProviderIcon(providerId)!} alt={`${providerId} logo`} className="absolute inset-0 m-auto w-8 h-8 rounded-full" />
+              )}
+            </div>
             <p className="mt-4 text-lg text-gray-300 text-center px-2">
               {loadingMessage}
             </p>

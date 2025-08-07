@@ -1,7 +1,29 @@
 
 import React, { useState } from 'react';
-import { ImageHistoryItem, HistoryActionType, MAX_COMPARE_ITEMS, MediaType } from '../types';
+import { ImageHistoryItem, HistoryActionType, MAX_COMPARE_ITEMS, MediaType, ImageProviderId } from '../types';
 import { default as classNames } from 'classnames';
+
+import GeminiIcon from '../assets/gemini.svg';
+import StabilityAIIcon from '../assets/stability_ai.svg';
+import LeonardoAIIcon from '../assets/leonardo_ai.svg';
+import ClipdropIcon from '../assets/clipdrop.svg';
+import ReplicateIcon from '../assets/replicate.svg';
+import FalAIIcon from '../assets/fal_ai.svg';
+
+const providerIcons: Record<ImageProviderId, string> = {
+    'gemini': GeminiIcon,
+    'stability_ai': StabilityAIIcon,
+    'leonardo_ai': LeonardoAIIcon,
+    'clipdrop': ClipdropIcon,
+    'replicate': ReplicateIcon,
+    'fal_ai': FalAIIcon,
+};
+
+const getProviderIcon = (providerId?: ImageProviderId) => {
+    if (!providerId) return null;
+    return providerIcons[providerId] || null;
+};
+
 
 interface ImageHistoryProps {
   history: ImageHistoryItem[];
@@ -238,7 +260,12 @@ const ImageHistory: React.FC<ImageHistoryProps> = ({
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleItemClick(item);}}
             >
                 {itemMediaType === 'image' ? (
-                    <img src={item.imageUrl} alt={item.prompt || 'Generated art'} className="w-full h-28 object-cover rounded-md mb-1.5" loading="lazy"/>
+                    <div className="relative">
+                        <img src={item.imageUrl} alt={item.prompt || 'Generated art'} className="w-full h-28 object-cover rounded-md mb-1.5" loading="lazy"/>
+                        {getProviderIcon(item.provider) && (
+                            <img src={getProviderIcon(item.provider)!} alt={`${item.provider} logo`} className="absolute top-1 left-1 w-4 h-4 rounded-full bg-gray-900 p-0.5" />
+                        )}
+                    </div>
                 ) : itemMediaType === 'video' ? (
                     <div className="w-full h-28 rounded-md mb-1.5 bg-black flex items-center justify-center text-gray-400 text-xs relative">
                        <PlayIcon /> Video: {item.concept.substring(0,15)}...
