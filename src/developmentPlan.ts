@@ -132,19 +132,19 @@ export const developmentPlan = {
           title: 'AI-Powered Style Transfer',
           description:
             'Allow users to apply the style of one image to another, using a neural style transfer model.',
-          status: 'future',
+          status: 'completed',
           subTasks: [
             {
               title: 'Style Selection',
               description:
                 'Provide a curated list of styles for users to choose from, as well as the ability to upload their own style images.',
-              status: 'future',
+              status: 'completed',
             },
             {
               title: 'Style Transfer API Integration',
               description:
                 'Integrate with a style transfer API to perform the style transfer.',
-              status: 'future',
+              status: 'completed',
             },
           ],
         },
@@ -152,19 +152,19 @@ export const developmentPlan = {
           title: 'Monetization',
           description:
             'Explore various monetization strategies, such as a subscription model or a pay-per-use model.',
-          status: 'future',
+          status: 'completed',
           subTasks: [
             {
               title: 'Subscription Model',
               description:
                 'Offer a subscription model with different tiers of features and usage limits.',
-              status: 'future',
+              status: 'completed',
             },
             {
               title: 'Pay-Per-Use Model',
               description:
                 'Allow users to pay for specific features or a certain number of API calls.',
-              status: 'future',
+              status: 'completed',
             },
           ],
         },

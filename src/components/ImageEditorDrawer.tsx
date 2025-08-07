@@ -7,6 +7,7 @@ import {
   inpaintWithClipdrop,
   outpaintWithClipdrop,
   replaceBackgroundWithClipdrop,
+  styleTransferWithClipdrop,
 } from '../services/imageEditingService';
 import { sendEditingAction } from '../services/collaborationService';
 
@@ -106,6 +107,13 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
     });
   };
 
+  const handleStyleTransfer = async () => {
+    if (!image) return;
+    const newImageSrc = await styleTransferWithClipdrop(image.src, 'VG-Gogh');
+    onImageUpdate(newImageSrc);
+    onClose();
+  };
+
   const handleOutpaint = async () => {
     if (!image) return;
     const newImageSrc = await outpaintWithClipdrop(image.src);
@@ -202,6 +210,7 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
             <Button onClick={handleOutpaint}>Outpaint</Button>
             <Button onClick={handleRemoveObject}>Remove Object</Button>
             <Button onClick={handleSendAction}>Send Action</Button>
+            <Button onClick={handleStyleTransfer}>Style Transfer</Button>
           </div>
           <div className="mt-4 flex gap-2">
             <Input

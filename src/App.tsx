@@ -27,6 +27,7 @@ import {
   onEditingAction,
   sendEditingAction,
 } from './services/collaborationService';
+import SubscriptionModal from './components/SubscriptionModal';
 
 const App: React.FC = () => {
   return (
@@ -44,6 +45,7 @@ const AppContent: React.FC = () => {
   const [driveImages, setDriveImages] = useState<string[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchDriveImages = async () => {
@@ -115,16 +117,23 @@ const AppContent: React.FC = () => {
       <div className="flex-1 flex flex-col">
         <header className="bg-white shadow-md p-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">AI Image Generator</h1>
-          {isLoggedIn ? (
-            <Button onClick={() => googleLogout()}>Logout</Button>
-          ) : (
-            <GoogleLogin
-              onSuccess={handleLoginSuccess}
-              onError={() => {
-                console.log('Login Failed');
-              }}
-            />
-          )}
+          <div className="flex items-center gap-4">
+            {isLoggedIn ? (
+              <>
+                <Button onClick={() => setIsSubscriptionModalOpen(true)}>
+                  Subscribe
+                </Button>
+                <Button onClick={() => googleLogout()}>Logout</Button>
+              </>
+            ) : (
+              <GoogleLogin
+                onSuccess={handleLoginSuccess}
+                onError={() => {
+                  console.log('Login Failed');
+                }}
+              />
+            )}
+          </div>
         </header>
         <main className="flex-1 p-4 flex gap-4">
           <div className="w-1/4">
@@ -158,6 +167,10 @@ const AppContent: React.FC = () => {
         }}
       />
       <Toaster />
+      <SubscriptionModal
+        isOpen={isSubscriptionModalOpen}
+        onClose={() => setIsSubscriptionModalOpen(false)}
+      />
     </div>
   );
 };
