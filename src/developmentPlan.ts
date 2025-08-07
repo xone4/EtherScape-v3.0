@@ -79,25 +79,25 @@ export const developmentPlan = {
           title: 'Advanced AI-Powered Image Manipulation',
           description:
             'Implement cutting-edge AI features for advanced image manipulation.',
-          status: 'future',
+          status: 'completed',
           subTasks: [
             {
               title: 'Generative Fill',
               description:
                 'Allow users to select an area of an image and generate new content based on a text prompt.',
-              status: 'future',
+              status: 'completed',
             },
             {
               title: 'Image-to-Image Generation',
               description:
                 'Allow users to generate new images based on an input image and a text prompt.',
-              status: 'future',
+              status: 'completed',
             },
             {
               title: 'AI-Powered Upscaling',
               description:
                 'Integrate a service to increase the resolution of images without losing quality.',
-              status: 'future',
+              status: 'completed',
             },
           ],
         },

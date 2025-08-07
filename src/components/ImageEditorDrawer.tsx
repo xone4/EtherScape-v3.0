@@ -8,6 +8,9 @@ import {
   outpaintWithClipdrop,
   replaceBackgroundWithClipdrop,
   styleTransferWithClipdrop,
+  generativeFillWithClipdrop,
+  imageToImageWithClipdrop,
+  upscaleWithClipdrop,
 } from '../services/imageEditingService';
 import { sendEditingAction } from '../services/collaborationService';
 
@@ -27,6 +30,8 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
   const [brushSize, setBrushSize] = useState(20);
   const [isDragging, setIsDragging] = useState(false);
   const [backgroundPrompt, setBackgroundPrompt] = useState('');
+  const [generativeFillPrompt, setGenerativeFillPrompt] = useState('');
+  const [imageToImagePrompt, setImageToImagePrompt] = useState('');
 
   useEffect(() => {
     if (image && canvasRef.current) {
@@ -110,6 +115,37 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
   const handleStyleTransfer = async () => {
     if (!image) return;
     const newImageSrc = await styleTransferWithClipdrop(image.src, 'VG-Gogh');
+    onImageUpdate(newImageSrc);
+    onClose();
+  };
+
+  const handleGenerativeFill = async () => {
+    if (!image || !generativeFillPrompt) return;
+    const maskBlob = await getMaskBlob();
+    if (maskBlob) {
+      const newImageSrc = await generativeFillWithClipdrop(
+        image.src,
+        maskBlob,
+        generativeFillPrompt
+      );
+      onImageUpdate(newImageSrc);
+      onClose();
+    }
+  };
+
+  const handleImageToImage = async () => {
+    if (!image || !imageToImagePrompt) return;
+    const newImageSrc = await imageToImageWithClipdrop(
+      image.src,
+      imageToImagePrompt
+    );
+    onImageUpdate(newImageSrc);
+    onClose();
+  };
+
+  const handleUpscale = async () => {
+    if (!image) return;
+    const newImageSrc = await upscaleWithClipdrop(image.src);
     onImageUpdate(newImageSrc);
     onClose();
   };
@@ -211,6 +247,9 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
             <Button onClick={handleRemoveObject}>Remove Object</Button>
             <Button onClick={handleSendAction}>Send Action</Button>
             <Button onClick={handleStyleTransfer}>Style Transfer</Button>
+            <Button onClick={handleGenerativeFill}>Generative Fill</Button>
+            <Button onClick={handleImageToImage}>Image-to-Image</Button>
+            <Button onClick={handleUpscale}>Upscale</Button>
           </div>
           <div className="mt-4 flex gap-2">
             <Input
@@ -219,6 +258,20 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
               onChange={(e) => setBackgroundPrompt(e.target.value)}
             />
             <Button onClick={handleReplaceBackground}>Replace Background</Button>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <Input
+              placeholder="Generative fill prompt..."
+              value={generativeFillPrompt}
+              onChange={(e) => setGenerativeFillPrompt(e.target.value)}
+            />
+          </div>
+          <div className="mt-4 flex gap-2">
+            <Input
+              placeholder="Image-to-image prompt..."
+              value={imageToImagePrompt}
+              onChange={(e) => setImageToImagePrompt(e.target.value)}
+            />
           </div>
         </div>
       </DrawerContent>
