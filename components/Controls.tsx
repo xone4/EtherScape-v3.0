@@ -1,8 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../AppContext'; // Import context
 import { ART_STYLES, COMMON_ASPECT_RATIOS, DEFAULT_ASPECT_RATIO, IMAGE_PROVIDERS_STATIC, DEFAULT_CFG_SCALE, DEFAULT_STEPS } from '../constants';
 import { ModelSetting, ImageProviderSetting, PresetItem, ImageProviderId } from '../types';
+import { remixConcept, enhancePrompt } from '../services/geminiService';
 
 // Props that are NOT from context (or are callbacks that App.tsx still handles)
 interface ControlsOwnProps {
@@ -21,19 +21,8 @@ interface ControlsOwnProps {
   onRandomize: () => void;
   predefinedConcepts: string[];
   userSavedConcepts: string[];
-  onRemixConcept: () => void;
-  suggestedConcepts: string[] | null;
-  onSelectSuggestedConcept: (concept: string) => void;
-  isRemixingConcept: boolean;
 
   onOpenAdvancedSettings: () => void;
-  onEnhancePrompt: (currentTheme: string) => void;
-  isEnhancingPrompt: boolean;
-
-  savedPresets: PresetItem[];
-  onSavePreset: (presetData: Omit<PresetItem, 'id' | 'name'>) => void; // Modified to pass data
-  onLoadPreset: (preset: PresetItem) => void;
-  onDeletePreset: (presetId: string) => void;
 
   onLiveQueryStart: () => void;
   isProcessingLiveQuery: boolean;
@@ -41,9 +30,8 @@ interface ControlsOwnProps {
 
 const Controls: React.FC<ControlsOwnProps> = ({
   onStart, onStop, onGenerateSingle, onSaveConcept,
-  onRandomize, predefinedConcepts, userSavedConcepts, onRemixConcept, suggestedConcepts, onSelectSuggestedConcept, isRemixingConcept,
-  onOpenAdvancedSettings, onEnhancePrompt, isEnhancingPrompt,
-  savedPresets, onSavePreset, onLoadPreset, onDeletePreset,
+  onRandomize, predefinedConcepts, userSavedConcepts,
+  onOpenAdvancedSettings,
   onLiveQueryStart, isProcessingLiveQuery
 }) => {
   const {
@@ -83,6 +71,107 @@ const Controls: React.FC<ControlsOwnProps> = ({
   const [seedInput, setSeedInput] = useState<string>(initialSeedForControls === undefined ? '' : String(initialSeedForControls));
   const [showPresetManager, setShowPresetManager] = useState<boolean>(false);
   const [showAdvancedGenParams, setShowAdvancedGenParams] = useState<boolean>(false);
+  const [suggestedConcepts, setSuggestedConcepts] = useState<string[] | null>(null);
+  const [isRemixingConcept, setIsRemixingConcept] = useState<boolean>(false);
+  const [isEnhancingPrompt, setIsEnhancingPrompt] = useState<boolean>(false);
+  const [savedPresets, setSavedPresets] = useState<PresetItem[]>([]);
+
+  const handleRemixConcept = async () => {
+    if (!themeInput.trim() || isRemixingConcept || appIsLoading || isPlaying) return;
+    setIsRemixingConcept(true);
+    logAppEvent('API', 'Remixing concept from Gemini text model.', { concept: themeInput.trim() });
+    try {
+      const variations = await remixConcept(themeInput.trim());
+      setSuggestedConcepts(variations);
+      logAppEvent('API', 'Remixed concepts received.', { variations });
+    } catch (err: any) {
+      logAppEvent('ERROR', 'Failed to remix concept.', { error: err.message });
+    } finally {
+      setIsRemixingConcept(false);
+    }
+  };
+
+  const handleEnhancePrompt = async () => {
+    if (!themeInput.trim() || isEnhancingPrompt || appIsLoading || isPlaying) return;
+    setIsEnhancingPrompt(true);
+    logAppEvent('API', 'Enhancing theme/prompt with Gemini text model.', { theme: themeInput.trim() });
+    try {
+        const enhanced = await enhancePrompt(themeInput.trim());
+        if (enhanced && enhanced !== `${themeInput.trim()} (enhancement failed)`) {
+            setThemeInput(enhanced);
+            setInitialThemeForControls(enhanced);
+            logAppEvent('API', 'Concept enhanced successfully.', { original: themeInput.trim(), enhanced });
+        } else {
+            logAppEvent('WARNING', 'AI prompt enhancement failed or no change.', { theme: themeInput.trim() });
+        }
+    } catch (err: any) {
+        logAppEvent('ERROR', 'Failed to enhance concept/prompt.', { error: err.message });
+    } finally {
+        setIsEnhancingPrompt(false);
+    }
+  };
+
+  const handleSavePreset = () => {
+    const presetName = window.prompt("Enter a name for this preset:", themeInput.trim().substring(0, 30));
+    if (presetName && presetName.trim() !== "") {
+      const newPreset: PresetItem = {
+        id: `${Date.now()}`,
+        name: presetName.trim(),
+        concept: themeInput.trim(),
+        artStyle: initialArtStyleForControls,
+        aspectRatio: initialAspectRatioForControls,
+        providerId: selectedImageProvider,
+        modelId: selectedModelId,
+        negativePrompt: initialNegativePromptForControls.trim(),
+        cfgScale: initialCfgScaleForControls,
+        steps: initialStepsForControls,
+        seed: initialSeedForControls,
+        sampler: initialSamplerForControls,
+        stylePreset: initialStylePresetForControls,
+        leonardoPresetStyle: initialLeonardoPresetStyleForControls,
+        useAlchemy: initialUseAlchemyForControls,
+        usePhotoReal: initialUsePhotoRealForControls,
+      };
+      setSavedPresets(prev => [...prev, newPreset]);
+      logAppEvent('SYSTEM', 'Preset saved.', { presetName: newPreset.name });
+    }
+  };
+
+  const onLoadPreset = (preset: PresetItem) => {
+    setThemeInput(preset.concept);
+    setInitialThemeForControls(preset.concept);
+    setCurrentArtStyle(preset.artStyle);
+    setInitialArtStyleForControls(preset.artStyle);
+    setCurrentAspectRatio(preset.aspectRatio);
+    setInitialAspectRatioForControls(preset.aspectRatio);
+    // These are already in context, but we need to set them
+    // setSelectedImageProvider(preset.providerId);
+    // setSelectedModelId(preset.modelId);
+    setCurrentNegativePrompt(preset.negativePrompt || "");
+    setInitialNegativePromptForControls(preset.negativePrompt || "");
+    setCurrentCfgScale(preset.cfgScale ?? DEFAULT_CFG_SCALE);
+    setInitialCfgScaleForControls(preset.cfgScale ?? DEFAULT_CFG_SCALE);
+    setCurrentSteps(preset.steps ?? DEFAULT_STEPS);
+    setInitialStepsForControls(preset.steps ?? DEFAULT_STEPS);
+    setCurrentSeed(preset.seed);
+    setInitialSeedForControls(preset.seed);
+    setCurrentSampler(preset.sampler);
+    setInitialSamplerForControls(preset.sampler);
+    setCurrentStylePreset(preset.stylePreset);
+    setInitialStylePresetForControls(preset.stylePreset);
+    setCurrentLeonardoPresetStyle(preset.leonardoPresetStyle);
+    setInitialLeonardoPresetStyleForControls(preset.leonardoPresetStyle);
+    setCurrentUseAlchemy(preset.useAlchemy ?? false);
+    setInitialUseAlchemyForControls(preset.useAlchemy ?? false);
+    setCurrentUsePhotoReal(preset.usePhotoReal ?? false);
+    setInitialUsePhotoRealForControls(preset.usePhotoReal ?? false);
+    logAppEvent('SYSTEM', 'Preset loaded.', { presetName: preset.name });
+  };
+
+  const onDeletePreset = (presetId: string) => {
+    setSavedPresets(prev => prev.filter(p => p.id !== presetId));
+    logAppEvent('SYSTEM', 'Preset deleted.', { presetId });
+  };
 
 
   const selectedProviderConfig = imageProvidersConfig.find(p => p.id === selectedImageProvider);
@@ -204,8 +293,14 @@ const Controls: React.FC<ControlsOwnProps> = ({
   const isThemeInputDisabled = isAnyLoading;
 
   const handleSaveConceptClick = () => { if (themeInput.trim()) onSaveConcept(themeInput.trim()); };
-  const handleRemixClick = () => { if (themeInput.trim() && !isAnyLoading) onRemixConcept(); };
-  const handleEnhanceConceptClick = () => { if (themeInput.trim() && !isAnyLoading) onEnhancePrompt(themeInput.trim()); };
+  const handleRemixClick = () => { if (themeInput.trim() && !isAnyLoading) handleRemixConcept(); };
+  const handleEnhanceConceptClick = () => { if (themeInput.trim() && !isAnyLoading) handleEnhancePrompt(); };
+  const onSelectSuggestedConcept = (concept: string) => {
+    setThemeInput(concept);
+    setInitialThemeForControls(concept);
+    setSuggestedConcepts(null);
+    logAppEvent('INFO', 'User selected a suggested concept.', { concept });
+    };
 
   const handleSavePresetClick = () => {
     const presetData = {
@@ -224,7 +319,7 @@ const Controls: React.FC<ControlsOwnProps> = ({
       useAlchemy: initialUseAlchemyForControls,
       usePhotoReal: initialUsePhotoRealForControls,
     };
-    onSavePreset(presetData);
+    handleSavePreset(presetData);
   };
 
   const isSaveDisabled = isAnyLoading || !themeInput.trim() || predefinedConcepts.includes(themeInput.trim()) || userSavedConcepts.includes(themeInput.trim());
