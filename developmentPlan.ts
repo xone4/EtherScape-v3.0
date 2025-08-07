@@ -57,12 +57,12 @@ export const developmentPlanData: DevPlanData = {
     "Activate Fal.ai Services (IP-Adapter, ControlNet, LLaVA, SVD): Update `services/falService.ts` to use actual `fetch` calls, `FormData`, and `Authorization` headers.",
     "Activate AudioGen Service: Update `services/audioService.ts` (for `generateSoundscapeWithFal`) to use actual `fetch` calls and `Authorization` headers.",
     "Activate Other Chat Providers (DeepSeek): Create `services/deepseekService.ts` and integrate it into `useChat.ts` for selectable chat functionality with DeepSeek.",
-    "In-app Image Editing: Add In-painting tool using Clipdrop API."
+    "In-app Image Editing: Add In-painting tool using Clipdrop API.",
+    "In-app Image Editing: Add Out-painting tools using provider APIs (e.g., Stability AI, Clipdrop)."
   ],
   "inProgress": [],
   "future": [
     // --- Phase 2: Improve User Experience and Add New Features (as per user plan) ---
-    "In-app Image Editing: Add Out-painting tools using provider APIs (e.g., Stability AI, Clipdrop).",
     "Deeper Google Drive Integration: Allow browsing and loading from user's 'Etherscape_Generated_Images' folder.",
     "UI/UX - Provider Icons: Display provider icons on history thumbnails and main image during load.",
     "UI/UX - Loading Skeletons: Implement skeleton loaders for smoother perceived performance, especially in history.",
