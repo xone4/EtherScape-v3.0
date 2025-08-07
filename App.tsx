@@ -21,6 +21,8 @@ import AudioPlayer from './components/AudioPlayer';
 import DriveBrowserModal from './components/DriveBrowserModal';
 import OnboardingTour from './components/OnboardingTour';
 import { urlToFile } from './utils';
+import { useAppStore } from './stores/appStore';
+import { useImageEditorStore } from './stores/imageEditorStore';
 
 // Custom Hooks
 import { useImageGeneration } from './hooks/useImageGeneration'; 
@@ -98,11 +100,10 @@ const AppContent: React.FC = () => {
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState<boolean>(false);
   const [isEditorDrawerOpen, setIsEditorDrawerOpen] = useState<boolean>(false); 
   
-  const [editingImage, setEditingImage] = useState<ImageHistoryItem | null>(null);
   const [isEditingLoading, setIsEditingLoading] = useState<boolean>(false); 
   const [editingError, setEditingError] = useState<EditingError | null>(null);
 
-  const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = useState<boolean>(false);
+  const { isAdvancedSettingsOpen, openAdvancedSettings, closeAdvancedSettings } = useAppStore();
   const [isDiscoveringModels, setIsDiscoveringModels] = useState<boolean>(false); 
 
   const [mainImageZoomLevel, setMainImageZoomLevel] = useState<number>(1);
@@ -767,15 +768,24 @@ const AppContent: React.FC = () => {
             setFullscreenImage(item); 
         }
         break;
-      case 'edit': 
-        if (item.mediaType === 'image') {
-            setEditingImage(item); setIsEditorDrawerOpen(true); setFullscreenImage(null); 
-            logAppEvent('EDITING', 'Image loaded into editor from history.', { concept: item.concept });
-        } else {
-            showToast(`Editing for ${item.mediaType} types is not fully supported yet. Opening details.`, 3000);
-            setEditingImage(item); 
+      case 'edit':
+        {
+            const { resetEditor, addLayer } = useImageEditorStore.getState();
+            resetEditor();
+            const newLayer = {
+                id: item.id, // Use existing ID
+                type: 'image',
+                name: item.concept,
+                imageUrl: item.imageUrl,
+                opacity: 1,
+                isVisible: true,
+                blendingMode: 'normal' as const,
+                ...item
+            };
+            addLayer(newLayer);
             setIsEditorDrawerOpen(true); 
             setFullscreenImage(null);
+            logAppEvent('EDITING', 'Image loaded into editor from history.', { concept: item.concept });
         }
         break;
       case 'delete': 
@@ -894,10 +904,6 @@ const AppContent: React.FC = () => {
     setSuggestedConcepts(null); 
     logAppEvent('INFO', 'User selected a suggested concept.', { concept });
   };
-  
-
-  const handleOpenAdvancedSettings = () => { setIsAdvancedSettingsOpen(true); logAppEvent('SYSTEM', 'Advanced settings modal opened.'); };
-  const handleCloseAdvancedSettings = () => { setIsAdvancedSettingsOpen(false); logAppEvent('SYSTEM', 'Advanced settings modal closed.'); };
   const handleDownloadLogs = useCallback(() => {
     const logData = JSON.stringify(appLogs, null, 2);
     const blob = new Blob([logData], { type: 'application/json' });
@@ -1126,10 +1132,6 @@ const AppContent: React.FC = () => {
     setIsEditorDrawerOpen(prev => !prev);
     logAppEvent('SYSTEM', `Image editor drawer ${!isEditorDrawerOpen ? 'opened' : 'closed'}.`);
   };
-  const handleCloseAndClearEditor = () => {
-    setEditingImage(null); setIsEditorDrawerOpen(false); setEditingError(null);
-    logAppEvent('EDITING', 'Image editor closed and current editing image cleared.');
-  };
   const handleManualModelUpdate = async () => {
     setIsDiscoveringModels(true);
     logAppEvent('MODEL_DISCOVERY', 'Manual model update process started by user.');
@@ -1209,7 +1211,19 @@ const AppContent: React.FC = () => {
         stylePreset: currentStylePreset, leonardoPresetStyle: currentLeonardoPresetStyle,
         useAlchemy: currentUseAlchemy, usePhotoReal: currentUsePhotoReal,
     };
-    setEditingImage(newEditingItem); setIsEditorDrawerOpen(true); 
+    const { resetEditor, addLayer } = useImageEditorStore.getState();
+    resetEditor();
+    addLayer({
+        id: newEditingItem.id,
+        type: 'image',
+        name: newEditingItem.concept,
+        imageUrl: newEditingItem.imageUrl,
+        opacity: 1,
+        isVisible: true,
+        blendingMode: 'normal' as const,
+        ...newEditingItem
+    });
+    setIsEditorDrawerOpen(true);
     setCurrentConcept(newEditingItem.concept); setInitialThemeForControls(newEditingItem.concept); 
     setCurrentArtStyle(newEditingItem.artStyle); setInitialArtStyleForControls(newEditingItem.artStyle);
     setCurrentAspectRatio(newEditingItem.aspectRatio); setInitialAspectRatioForControls(newEditingItem.aspectRatio); 
@@ -1347,6 +1361,14 @@ const AppContent: React.FC = () => {
     logAppEvent('DRIVE', 'Image loaded from Drive Browser.', { concept: image.concept });
   };
 
+  const handleCloseAndClearEditor = () => {
+    const { resetEditor } = useImageEditorStore.getState();
+    resetEditor();
+    setIsEditorDrawerOpen(false);
+    setEditingError(null);
+    logAppEvent('EDITING', 'Image editor closed and current editing image cleared.');
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-900 text-gray-100 overflow-hidden relative">
       <header className="flex items-center justify-between p-3 bg-gray-800/70 backdrop-blur-md shadow-lg sticky top-0 z-30" style={{ height: `${APP_HEADER_HEIGHT_PX}px` }}>
@@ -1383,16 +1405,25 @@ const AppContent: React.FC = () => {
                              : ( <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg> )}
         </button>
          <ImageEditorDrawer
-            isOpen={isEditorDrawerOpen} editingImage={editingImage} onCloseAndClear={handleCloseAndClearEditor} 
-            onUpscale={handleReplicateUpscaleImage} onClipdropUpscale={handleClipdropUpscale} 
-            isLoading={appIsLoading || isEditingLoading || isProcessingLiveQuery} userApiKeys={userApiKeys}
-            editingError={editingError} clearEditingError={() => setEditingError(null)}
+            isOpen={isEditorDrawerOpen}
+            onCloseAndClear={handleCloseAndClearEditor}
+            onUpscale={handleReplicateUpscaleImage}
+            onClipdropUpscale={handleClipdropUpscale}
+            isLoading={appIsLoading || isEditingLoading || isProcessingLiveQuery}
+            userApiKeys={userApiKeys}
+            editingError={editingError}
+            clearEditingError={() => setEditingError(null)}
             setEditingError={setEditingError}
-            onImageUpload={handleImageUploadForEditing} onLiveQueryStart={handleLiveQueryStart} 
-            isProcessingLiveQuery={isProcessingLiveQuery} selectedImageProviderId={selectedImageProvider}
-            selectedModelConfig={currentModelConfigForControls} onGenerateWithLeonardoImg2Img={handleGenerateWithLeonardoImg2Img}
-            addImageToHistory={addImageToHistory} showToast={showToast} logAppEvent={logAppEvent}
-            onSetEditingImage={setEditingImage} currentMainPrompt={currentPrompt || currentConcept}
+            onImageUpload={handleImageUploadForEditing}
+            onLiveQueryStart={handleLiveQueryStart}
+            isProcessingLiveQuery={isProcessingLiveQuery}
+            selectedImageProviderId={selectedImageProvider}
+            selectedModelConfig={currentModelConfigForControls}
+            onGenerateWithLeonardoImg2Img={handleGenerateWithLeonardoImg2Img}
+            addImageToHistory={addImageToHistory}
+            showToast={showToast}
+            logAppEvent={logAppEvent}
+            currentMainPrompt={currentPrompt || currentConcept}
             onClipdropInpaint={handleClipdropInpaint}
         />
         <main className="flex-grow flex flex-col items-center justify-center p-2 md:p-4 overflow-hidden relative">
@@ -1445,13 +1476,13 @@ const AppContent: React.FC = () => {
                  {currentModelConfigForControls?.supportsPhotoReal && <p><strong className="text-gray-400">PhotoReal:</strong> {initialUsePhotoRealForControls ? 'On' : 'Off'}</p>}
 
                 {currentPrompt && <p className="italic text-gray-400 mt-1 text-xs"><strong className="text-gray-500">Last Prompt:</strong> "{currentPrompt}"</p>}
-                <p className="text-xs text-gray-400 mt-2 pt-2 border-t border-gray-600/50">To change Provider/Model or other defaults, use <button onClick={() => { setIsControlsDrawerOpen(false); handleOpenAdvancedSettings(); }} className="underline text-gray-300 hover:text-white">Advanced Settings</button>.</p>
+                <p className="text-xs text-gray-400 mt-2 pt-2 border-t border-gray-600/50">To change Provider/Model or other defaults, use <button onClick={() => { setIsControlsDrawerOpen(false); openAdvancedSettings(); }} className="underline text-gray-300 hover:text-white">Advanced Settings</button>.</p>
               </div>
               <Controls 
                 onStart={handleStart} onStop={handleStop} onGenerateSingle={handleGenerateSingle}
                 onSaveConcept={handleSaveConcept} 
                 onRandomize={handleRandomizeSettings} predefinedConcepts={PREDEFINED_CONCEPTS} userSavedConcepts={userSavedConcepts}
-                onOpenAdvancedSettings={handleOpenAdvancedSettings} 
+                onOpenAdvancedSettings={openAdvancedSettings}
                 onLiveQueryStart={handleLiveQueryStart} isProcessingLiveQuery={isProcessingLiveQuery}
               />
           </div>
@@ -1499,7 +1530,7 @@ const AppContent: React.FC = () => {
         {fullscreenImage && ( <FullscreenModal image={fullscreenImage} onClose={() => setFullscreenImage(null)} onAction={handleHistoryItemAction} isGeneratingVideo={isGeneratingVideo} isGeneratingAudio={isGeneratingAudio} /> )}
         {isAdvancedSettingsOpen && (
           <AdvancedSettingsModal
-            isOpen={isAdvancedSettingsOpen} onClose={handleCloseAdvancedSettings} logs={appLogs}
+            isOpen={isAdvancedSettingsOpen} onClose={closeAdvancedSettings} logs={appLogs}
             devPlan={developmentPlanData} troubleshooting={troubleshootingGuideData} onDownloadLogs={handleDownloadLogs}
             imageProvidersConfig={imageProvidersConfig} currentImageProviderId={selectedImageProvider} onSetImageProvider={handleChangeImageProvider}
             currentModelId={selectedModelId} onSetModelId={handleSetSelectedModelId}
