@@ -184,3 +184,63 @@ export const inpaintWithClipdrop = async (
     throw new Error(`Clipdrop inpainting failed: ${message}`);
   }
 };
+
+// Outpaint image using Clipdrop
+export const outpaintWithClipdrop = async (
+  apiKey: string,
+  imageFile: File,
+  extend_left: number = 0,
+  extend_right: number = 0,
+  extend_up: number = 0,
+  extend_down: number = 0
+): Promise<string> => {
+  if (!apiKey || apiKey.trim() === "") {
+    throw new Error("Clipdrop API Key is required for outpainting.");
+  }
+
+  const formData = new FormData();
+  formData.append('image_file', imageFile);
+  if (extend_left) formData.append('extend_left', extend_left.toString());
+  if (extend_right) formData.append('extend_right', extend_right.toString());
+  if (extend_up) formData.append('extend_up', extend_up.toString());
+  if (extend_down) formData.append('extend_down', extend_down.toString());
+
+  try {
+    const response = await fetch("https://clipdrop-api.co/uncrop/v1", {
+      method: 'POST',
+      headers: { 'x-api-key': apiKey },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      let errorBody = "Unknown error";
+      try {
+        const errorJson = await response.json();
+        errorBody = errorJson.error || JSON.stringify(errorJson);
+      } catch (e) {
+        errorBody = await response.text().catch(() => `Clipdrop Outpainting API Error: ${response.status} ${response.statusText}`);
+      }
+      throw new Error(`Clipdrop Outpainting API Error: ${response.status} ${response.statusText}. Details: ${errorBody}`);
+    }
+
+    const resultBlob = await response.blob();
+    if (!resultBlob || resultBlob.size === 0) {
+      throw new Error("Clipdrop API returned an empty blob for outpainted image.");
+    }
+    if (!resultBlob.type.startsWith('image/')) {
+      const errorText = await resultBlob.text().catch(() => "Received non-image blob from Clipdrop Outpainting.");
+      throw new Error(`Clipdrop Outpainting API returned non-image data: ${errorText.substring(0, 100)}...`);
+    }
+
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(new Error(`FileReader error for Clipdrop Outpainting result: ${error}`));
+      reader.readAsDataURL(resultBlob);
+    });
+  } catch (error) {
+    console.error("Error during Clipdrop outpainting request or processing:", error);
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Clipdrop outpainting failed: ${message}`);
+  }
+};

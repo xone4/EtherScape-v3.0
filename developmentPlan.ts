@@ -56,24 +56,28 @@ export const developmentPlanData: DevPlanData = {
     "State Management Refactor: Implement a simulated centralized state management (using React Context) to mirror Jotai's benefits, reducing prop drilling and centralizing key application states.",
     "Activate Fal.ai Services (IP-Adapter, ControlNet, LLaVA, SVD): Update `services/falService.ts` to use actual `fetch` calls, `FormData`, and `Authorization` headers.",
     "Activate AudioGen Service: Update `services/audioService.ts` (for `generateSoundscapeWithFal`) to use actual `fetch` calls and `Authorization` headers.",
-    "Activate Other Chat Providers (DeepSeek): Create `services/deepseekService.ts` and integrate it into `useChat.ts` for selectable chat functionality with DeepSeek."
-  ],
-  "inProgress": [
-    "In-app Image Editing: Add In-painting tool using Clipdrop API."
-  ],
-  "future": [
-    // --- Phase 2: Improve User Experience and Add New Features (as per user plan) ---
+    "Activate Other Chat Providers (DeepSeek): Create `services/deepseekService.ts` and integrate it into `useChat.ts` for selectable chat functionality with DeepSeek.",
+    "In-app Image Editing: Add In-painting tool using Clipdrop API.",
     "In-app Image Editing: Add Out-painting tools using provider APIs (e.g., Stability AI, Clipdrop).",
     "Deeper Google Drive Integration: Allow browsing and loading from user's 'Etherscape_Generated_Images' folder.",
     "UI/UX - Provider Icons: Display provider icons on history thumbnails and main image during load.",
     "UI/UX - Loading Skeletons: Implement skeleton loaders for smoother perceived performance, especially in history.",
-    "UI/UX - Onboarding Tour: Create an interactive guide for new users explaining key features.",
-    // --- Phase 3: Advanced Features and Integrated Ecosystem (as per user plan) ---
-    "Community Gallery: Develop a platform for users to share creations (requires backend & auth).",
-    "Image Caching: Implement client-side caching (Cache API/Service Worker) for faster history/image loading.",
-    "User Data Export/Import: Allow backup/restore of concepts, presets, and history via JSON.",
-    // --- Carry-over Future Items (from original plan) ---
-    "User accounts/profiles (beyond Drive auth) for multi-device sync.",
-    "Enhanced accessibility (WCAG compliance review)."
+    "UI/UX - Onboarding Tour: Create an interactive guide for new users explaining key features."
+  ],
+  "inProgress": [],
+  "future": [
+    // --- Phase 1: Core Experience & Foundation ---
+    "Component-Level State Management: Refactor App.tsx monolith to component-oriented state.",
+    "Advanced In-App Image Editor: Add color adjustments, filters, text overlays, and cropping.",
+    "Community-Sourced Art Styles: Allow users to submit and vote on new art styles.",
+    "Themed UI & Customization: Introduce user-selectable themes (e.g., dark, light, cyberpunk).",
+    // --- Phase 2: Expanding the Creative Toolkit ---
+    "Video Generation & Editing: Introduce video generation and a simple editor with trimming, audio, and transitions.",
+    "3D Model Generation: Integrate a 3D model generation service and a simple 3D viewer.",
+    "AI-Powered Music Generation: Integrate a more advanced AI music generation service.",
+    // --- Phase 3: Community & Collaboration ---
+    "Community Gallery & Social Features: Implement a gallery with user profiles, likes, comments, and social sharing.",
+    "Real-Time Collaborative Canvas: Create a collaborative canvas for multiple users to work on the same image/video.",
+    "Plugin & Extension Marketplace: Build a marketplace for third-party developers to extend the application's functionality."
   ]
 };

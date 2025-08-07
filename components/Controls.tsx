@@ -251,7 +251,7 @@ const Controls: React.FC<ControlsOwnProps> = ({
 
 
   return (
-    <div className="space-y-3 text-sm">
+    <div className="space-y-3 text-sm controls-drawer-content">
       <div>
         <label htmlFor="theme-input" className="block text-xs font-medium text-gray-300 mb-0.5">Theme / Concept</label>
         <input
@@ -483,7 +483,7 @@ const Controls: React.FC<ControlsOwnProps> = ({
         <button
           onClick={handleStartClick}
           disabled={isPlaying || isLoading || !themeInput.trim()}
-          className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-500 text-white font-bold rounded-md shadow-md transition-all duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-500 text-white font-bold rounded-md shadow-md transition-all duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed start-stop-button"
           aria-label="Start continuous image generation"
         >
           {isPlaying ? 'Evolving...' : 'Start Evolving'}
@@ -500,7 +500,7 @@ const Controls: React.FC<ControlsOwnProps> = ({
       <button
           onClick={handleGenerateSingleClick}
           disabled={isGenerateSingleDisabled}
-          className="w-full mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-md shadow-md transition-all duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed"
+          className="w-full mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-md shadow-md transition-all duration-150 ease-in-out disabled:opacity-60 disabled:cursor-not-allowed generate-button"
           aria-label="Generate a single image"
         >
           {isLoading && !isPlaying ? 'Generating...' : 'Generate Single Image'}

@@ -17,9 +17,11 @@ import CameraCaptureModal from './components/CameraCaptureModal';
 import GroundingInfoDisplay from './components/GroundingInfoDisplay';
 import ChatDrawer from './components/ChatDrawer'; 
 import CompareViewModal from './components/CompareViewModal'; 
-import VideoDisplayModal from './components/VideoDisplayModal'; 
-import AudioPlayer from './components/AudioPlayer'; 
-import { urlToFile } from './utils'; 
+import VideoDisplayModal from './components/VideoDisplayModal';
+import AudioPlayer from './components/AudioPlayer';
+import DriveBrowserModal from './components/DriveBrowserModal';
+import OnboardingTour from './components/OnboardingTour';
+import { urlToFile } from './utils';
 
 // Custom Hooks
 import { useImageGeneration } from './hooks/useImageGeneration'; 
@@ -130,6 +132,8 @@ const AppContent: React.FC = () => {
   const [audioSrcForPlayer, setAudioSrcForPlayer] = useState<string | null>(null);
   const [isAudioPlayerVisible, setIsAudioPlayerVisible] = useState<boolean>(false);
   const [audioTitleForPlayer, setAudioTitleForPlayer] = useState<string | null>(null);
+  const [isDriveBrowserOpen, setIsDriveBrowserOpen] = useState<boolean>(false);
+  const [isTourOpen, setIsTourOpen] = useState<boolean>(false);
   
   const {
     isDriveAuthenticated, driveUserEmail, isDriveLoading, driveError, setDriveError, 
@@ -1328,11 +1332,40 @@ const AppContent: React.FC = () => {
     logAppEvent('AUDIO', 'Audio player closed by user.');
   };
 
+  const handleDriveImageSelect = (image: ImageHistoryItem) => {
+    addImageToHistory(
+      image.imageUrl,
+      image.prompt,
+      image.concept,
+      image.mediaType,
+      image.artStyle,
+      image.aspectRatio,
+      image.provider,
+      image.modelId,
+      image.negativePrompt,
+      image.driveFileId,
+      image.isUpscaled,
+      image.originalHistoryItemId,
+      image.cfgScale,
+      image.steps,
+      image.seed
+    );
+    showToast(`Image "${image.concept}" loaded from Google Drive.`, 2500);
+    logAppEvent('DRIVE', 'Image loaded from Drive Browser.', { concept: image.concept });
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-900 text-gray-100 overflow-hidden relative">
       <header className="flex items-center justify-between p-3 bg-gray-800/70 backdrop-blur-md shadow-lg sticky top-0 z-30" style={{ height: `${APP_HEADER_HEIGHT_PX}px` }}>
         <div className="flex items-center space-x-2 sm:space-x-3">
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-gray-300">Etherscape</h1>
+            {isDriveAuthenticated && (
+                <button onClick={() => setIsDriveBrowserOpen(true)} className="p-1.5 bg-gray-700 hover:bg-gray-600 rounded-md" title="Browse Google Drive">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
+                    </svg>
+                </button>
+            )}
         </div>
         <span className="text-xs text-gray-400 font-normal">xone_4.inc</span>
       </header>
@@ -1455,10 +1488,11 @@ const AppContent: React.FC = () => {
             </button>
         )}
       </div>
-      <footer className={`fixed bottom-0 left-0 right-0 w-full bg-gray-800/80 backdrop-blur-md shadow-top z-30 transform transition-transform duration-300 ease-[cubic-bezier(0.37,0,0.63,1)] max-h-[40vh] overflow-y-hidden flex flex-col ${isHistoryDrawerOpen ? 'translate-y-0' : 'translate-y-full'}`}
+      <footer className={`fixed bottom-0 left-0 right-0 w-full bg-gray-800/80 backdrop-blur-md shadow-top z-30 transform transition-transform duration-300 ease-[cubic-bezier(0.37,0,0.63,1)] max-h-[40vh] overflow-y-hidden flex flex-col ${isHistoryDrawerOpen ? 'translate-y-0' : 'translate-y-full'} history-drawer`}
         aria-hidden={!isHistoryDrawerOpen} >
         <ImageHistory 
             history={imageHistory} 
+            isGenerating={isGenerationLoading}
             onSelectItemAction={handleHistoryItemAction} 
             isVisible={isHistoryDrawerOpen} 
             isCompareModeActive={isCompareModeActive}
@@ -1490,8 +1524,10 @@ const AppContent: React.FC = () => {
             onSetChatSystemPromptBase={handleSetCurrentChatSystemPromptBase} currentChatConfig={currentChatConfig}
             onSetChatConfig={handleSetCurrentChatConfig} onConfirmChatSettingsAsDefault={handleConfirmChatSettingsAsDefault}
             currentChatModelId={selectedChatModelId} onSetChatModelId={setSelectedChatModelId}
+            onStartTour={() => setIsTourOpen(true)}
           />
         )}
+        <OnboardingTour run={isTourOpen} onClose={() => setIsTourOpen(false)} />
         {isCameraModalOpen && (
           <CameraCaptureModal
             isOpen={isCameraModalOpen} onClose={handleLiveQueryCancel} onCapture={handleCaptureAndProcessImage}
@@ -1521,6 +1557,14 @@ const AppContent: React.FC = () => {
             onClose={handleCloseAudioPlayer}
             isVisible={isAudioPlayerVisible}
           />
+        )}
+        {isDriveBrowserOpen && (
+            <DriveBrowserModal
+                isOpen={isDriveBrowserOpen}
+                onClose={() => setIsDriveBrowserOpen(false)}
+                onImageSelect={handleDriveImageSelect}
+                showToast={showToast}
+            />
         )}
       </ErrorBoundary>
        <style>{`

@@ -315,3 +315,38 @@ export const uploadImageToDrive = async (
     throw new Error(`DRIVE_UPLOAD_REQUEST_FAILED: ${gapiError.message || String(error)}`);
   }
 };
+
+export const listImagesFromDrive = async (): Promise<DriveFileMetadata[]> => {
+  if (!window.gapi.client.getToken()) {
+    throw new Error("DRIVE_LIST_NOT_AUTHENTICATED");
+  }
+  if (!appFolderId) {
+    try {
+      await findOrCreateAppFolder();
+    } catch (folderError: any) {
+      throw new Error(`DRIVE_LIST_FOLDER_UNAVAILABLE_ON_DEMAND: ${folderError.message || String(folderError)}`);
+    }
+    if (!appFolderId) {
+      throw new Error("DRIVE_LIST_FOLDER_UNAVAILABLE_FINAL");
+    }
+  }
+
+  try {
+    const response = await window.gapi.client.drive.files.list({
+      q: `'${appFolderId}' in parents and mimeType contains 'image/' and trashed=false`,
+      fields: 'files(id, name, thumbnailLink, appProperties, createdTime)',
+      orderBy: 'createdTime desc',
+      pageSize: 100 // Adjust page size as needed
+    });
+
+    return response.result.files as DriveFileMetadata[];
+  } catch (error) {
+    console.error("Error listing images from Drive:", error);
+    const gapiError = error as any;
+    if (gapiError.result && gapiError.result.error) {
+      const err = gapiError.result.error;
+      throw new Error(`DRIVE_LIST_API_ERROR: Code ${err.code} - ${err.message}`);
+    }
+    throw new Error(`DRIVE_LIST_REQUEST_FAILED: ${gapiError.message || String(error)}`);
+  }
+};

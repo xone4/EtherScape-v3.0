@@ -54,7 +54,8 @@ interface ImageEditorDrawerProps {
   logAppEvent: (type: LogEntryType, message: string, details?: any) => void;
   onSetEditingImage: (item: ImageHistoryItem | null) => void;
   currentMainPrompt: string; 
-  onClipdropInpaint: (originalImage: ImageHistoryItem, maskFile: File, inpaintPrompt: string) => Promise<void>; 
+  onClipdropInpaint: (originalImage: ImageHistoryItem, maskFile: File, inpaintPrompt: string) => Promise<void>;
+  onClipdropOutpaint: (originalImage: ImageHistoryItem, extendUp: number, extendDown: number, extendLeft: number, extendRight: number) => Promise<void>;
 }
 
 type EditorTabType = MediaType | 'creative';
@@ -95,12 +96,18 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
   logAppEvent,
   onSetEditingImage,
   currentMainPrompt,
-  onClipdropInpaint
+  onClipdropInpaint,
+  onClipdropOutpaint
 }) => {
   const [activeTab, setActiveTab] = useState<EditorTabType>('image');
   const [isReplicateUpscaling, setIsReplicateUpscaling] = useState(false);
   const [isClipdropUpscaling, setIsClipdropUpscaling] = useState(false);
   const [isClipdropInpainting, setIsClipdropInpainting] = useState(false);
+  const [isClipdropOutpainting, setIsClipdropOutpainting] = useState(false);
+  const [outpaintUp, setOutpaintUp] = useState(0);
+  const [outpaintDown, setOutpaintDown] = useState(0);
+  const [outpaintLeft, setOutpaintLeft] = useState(0);
+  const [outpaintRight, setOutpaintRight] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const styleImageInputRef = useRef<HTMLInputElement>(null);
   const controlImageInputRef = useRef<HTMLInputElement>(null);
@@ -461,6 +468,34 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
       }
   };
 
+  const handleApplyOutpainting = async () => {
+    if (!editingImage) {
+      showToast("An image is required for outpainting.", 3000);
+      logAppEvent('WARNING', 'Clipdrop Outpainting: Missing image.');
+      return;
+    }
+    if (outpaintUp === 0 && outpaintDown === 0 && outpaintLeft === 0 && outpaintRight === 0) {
+      showToast("Please enter a value for at least one direction.", 3000);
+      return;
+    }
+    setIsClipdropOutpainting(true);
+    clearEditingError();
+    logAppEvent('EDITING', "Clipdrop: Attempting Outpainting", {
+      baseImageConcept: editingImage.concept,
+      up: outpaintUp,
+      down: outpaintDown,
+      left: outpaintLeft,
+      right: outpaintRight,
+    });
+    try {
+      await onClipdropOutpaint(editingImage, outpaintUp, outpaintDown, outpaintLeft, outpaintRight);
+    } catch (error: any) {
+      logAppEvent('ERROR', "Clipdrop Outpainting failed in drawer.", { error: error.message });
+    } finally {
+      setIsClipdropOutpainting(false);
+    }
+  };
+
   const handleSaveCurrentToHistory = () => {
     if (!editingImage) {
       showToast("No image loaded in editor to save.", 3000);
@@ -503,8 +538,9 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
   const canReplicateUpscale = replicateApiKeySet && editingImage && editingImage.mediaType === 'image' && !editingImage.isUpscaled;
   const canClipdropUpscale = clipdropApiKeySet && editingImage && editingImage.mediaType === 'image' && !editingImage.isUpscaled;
   const canClipdropInpaint = clipdropApiKeySet && editingImage && editingImage.mediaType === 'image';
+  const canClipdropOutpaint = clipdropApiKeySet && editingImage && editingImage.mediaType === 'image';
   
-  const isAnyToolLoading = isLoading || isReplicateUpscaling || isClipdropUpscaling || isClipdropInpainting || isProcessingLiveQuery || isApplyingStyle || isApplyingControlNet || isDescribingWithLlava;
+  const isAnyToolLoading = isLoading || isReplicateUpscaling || isClipdropUpscaling || isClipdropInpainting || isClipdropOutpainting || isProcessingLiveQuery || isApplyingStyle || isApplyingControlNet || isDescribingWithLlava;
 
   const showFalAiStudio = editingImage && editingImage.mediaType === 'image';
   const showLeonardoImg2Img = editingImage && editingImage.mediaType === 'image' && selectedImageProviderId === 'leonardo_ai' && leonardoApiKeySet && selectedModelConfig?.supportsImageToImage === true;
@@ -638,6 +674,32 @@ const ImageEditorDrawer: React.FC<ImageEditorDrawerProps> = ({
                                 <textarea value={inpaintingPrompt} onChange={(e) => setInpaintingPrompt(e.target.value)} placeholder="Describe what to fill in the masked area..." rows={2} disabled={!canClipdropInpaint || isAnyToolLoading} className="w-full p-1.5 text-xs bg-gray-600 border border-gray-500 rounded focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400 scrollbar-thin"></textarea>
                                 <button onClick={handleApplyInpainting} disabled={!canClipdropInpaint || isAnyToolLoading || !inpaintingPrompt.trim()} className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-md shadow-sm transition-all text-xs disabled:opacity-60 disabled:cursor-not-allowed">
                                     {isClipdropInpainting ? 'Inpainting...' : 'Apply Inpainting (Clipdrop)'}
+                                </button>
+                            </div>
+
+                            <div className="p-2.5 border border-purple-500/50 rounded-md bg-gray-700/40 space-y-2">
+                                <h3 className="text-sm font-medium text-purple-300 mb-1">Outpainting (Clipdrop)</h3>
+                                {!canClipdropOutpaint && ( <p className="text-xs text-yellow-300 bg-yellow-700/40 p-1.5 rounded-md"> Clipdrop API Key required for Outpainting. </p> )}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label htmlFor="outpaint-left" className="block text-xs font-medium text-gray-300">Left (px)</label>
+                                        <input type="number" id="outpaint-left" value={outpaintLeft} onChange={(e) => setOutpaintLeft(Number(e.target.value))} disabled={!canClipdropOutpaint || isAnyToolLoading} className="w-full p-1.5 text-xs bg-gray-600 border border-gray-500 rounded" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="outpaint-right" className="block text-xs font-medium text-gray-300">Right (px)</label>
+                                        <input type="number" id="outpaint-right" value={outpaintRight} onChange={(e) => setOutpaintRight(Number(e.target.value))} disabled={!canClipdropOutpaint || isAnyToolLoading} className="w-full p-1.5 text-xs bg-gray-600 border border-gray-500 rounded" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="outpaint-up" className="block text-xs font-medium text-gray-300">Up (px)</label>
+                                        <input type="number" id="outpaint-up" value={outpaintUp} onChange={(e) => setOutpaintUp(Number(e.target.value))} disabled={!canClipdropOutpaint || isAnyToolLoading} className="w-full p-1.5 text-xs bg-gray-600 border border-gray-500 rounded" />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="outpaint-down" className="block text-xs font-medium text-gray-300">Down (px)</label>
+                                        <input type="number" id="outpaint-down" value={outpaintDown} onChange={(e) => setOutpaintDown(Number(e.target.value))} disabled={!canClipdropOutpaint || isAnyToolLoading} className="w-full p-1.5 text-xs bg-gray-600 border border-gray-500 rounded" />
+                                    </div>
+                                </div>
+                                <button onClick={handleApplyOutpainting} disabled={!canClipdropOutpaint || isAnyToolLoading} className="w-full px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-md shadow-sm transition-all text-xs disabled:opacity-60 disabled:cursor-not-allowed">
+                                    {isClipdropOutpainting ? 'Outpainting...' : 'Apply Outpainting (Clipdrop)'}
                                 </button>
                             </div>
                             <hr className="border-gray-600/50 my-3" />
